@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type MiniSearch from "minisearch";
 import { MapPin } from "lucide-react";
 import { buildIndex, searchDestinations } from "@/lib/search/fuzzy";
@@ -15,20 +15,27 @@ export function DestinationAutocomplete({
 }) {
   const [query, setQuery] = useState(value);
   const [index, setIndex] = useState<MiniSearch<DestinationEntry> | null>(null);
+  const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const loadStarted = useRef(false);
 
-  useEffect(() => {
-    let active = true;
+  // Lazily fetch (~5MB) and build the MiniSearch index only when the user first
+  // touches the destination field — keeps the landing page paint instant and
+  // avoids indexing ~70k entries on the main thread until it's actually needed.
+  const ensureIndex = useCallback(() => {
+    if (loadStarted.current) return;
+    loadStarted.current = true;
+    setLoading(true);
     fetch("/destinations-index.json")
       .then((r) => r.json())
       .then((entries: DestinationEntry[]) => {
-        if (active) setIndex(buildIndex(entries));
+        setIndex(buildIndex(entries));
       })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
+      .catch(() => {
+        loadStarted.current = false; // allow a retry on next interaction
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -58,13 +65,22 @@ export function DestinationAutocomplete({
           placeholder="City or hotel name"
           value={query}
           onChange={(e) => {
+            ensureIndex();
             setQuery(e.target.value);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            ensureIndex();
+            setOpen(true);
+          }}
           className="h-11 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
         />
       </div>
+      {open && loading && !index && query.length > 0 && (
+        <div className="absolute z-20 mt-1 w-full rounded-md border border-border bg-popover px-3 py-2 text-sm text-muted-foreground shadow-lg">
+          Loading destinations…
+        </div>
+      )}
       {open && results.length > 0 && (
         <ul
           role="listbox"

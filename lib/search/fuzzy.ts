@@ -4,7 +4,7 @@ import type { DestinationEntry } from "./destination";
 export function buildIndex(entries: DestinationEntry[]): MiniSearch<DestinationEntry> {
   const index = new MiniSearch<DestinationEntry>({
     fields: ["term"],
-    storeFields: ["uid", "term", "lat", "lng", "state", "type"],
+    storeFields: ["uid", "term", "type"],
     idField: "uid",
     searchOptions: { prefix: true, fuzzy: 0.2, boost: { term: 2 } },
   });
