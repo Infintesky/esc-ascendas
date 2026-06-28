@@ -24,3 +24,15 @@ describe("searchDestinations", () => {
     expect(searchDestinations(index, "singa", 1)).toHaveLength(1);
   });
 });
+
+describe("buildIndex with duplicate ids", () => {
+  it("does not throw when entries share a uid (real data has dupes)", () => {
+    const dupes = [
+      { uid: "jC3Y", term: "Paris, France", lat: 48.8, lng: 2.3, state: "", type: "city" },
+      { uid: "jC3Y", term: "Paris, France (dup)", lat: 48.8, lng: 2.3, state: "", type: "city" },
+    ];
+    expect(() => buildIndex(dupes)).not.toThrow();
+    const index = buildIndex(dupes);
+    expect(searchDestinations(index, "paris").some((d) => d.uid === "jC3Y")).toBe(true);
+  });
+});

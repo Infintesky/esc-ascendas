@@ -8,7 +8,15 @@ export function buildIndex(entries: DestinationEntry[]): MiniSearch<DestinationE
     idField: "uid",
     searchOptions: { prefix: true, fuzzy: 0.2, boost: { term: 2 } },
   });
-  index.addAll(entries);
+  // Real destination data contains duplicate uids; MiniSearch throws on a
+  // repeated idField, so keep the first occurrence of each uid.
+  const seen = new Set<string>();
+  const unique = entries.filter((e) => {
+    if (seen.has(e.uid)) return false;
+    seen.add(e.uid);
+    return true;
+  });
+  index.addAll(unique);
   return index;
 }
 
