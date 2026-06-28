@@ -71,7 +71,7 @@ export function SearchForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-xl border border-border bg-card p-6 shadow-sm"
+      className="rounded-2xl bg-card p-6 text-left"
     >
       <DestinationAutocomplete
         value=""
