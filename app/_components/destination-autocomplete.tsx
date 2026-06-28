@@ -9,9 +9,13 @@ import type { DestinationEntry } from "@/lib/search/destination";
 export function DestinationAutocomplete({
   value,
   onSelect,
+  onTopMatchChange,
 }: {
   value: string;
   onSelect: (entry: DestinationEntry) => void;
+  // Reports the current best suggestion (or null) so the form can auto-select
+  // it when the user typed a destination but didn't click a suggestion.
+  onTopMatchChange?: (entry: DestinationEntry | null) => void;
 }) {
   const [query, setQuery] = useState(value);
   const [index, setIndex] = useState<MiniSearch<DestinationEntry> | null>(null);
@@ -52,6 +56,11 @@ export function DestinationAutocomplete({
     () => (index ? searchDestinations(index, query) : []),
     [index, query],
   );
+
+  // Keep the parent informed of the current best match for auto-select.
+  useEffect(() => {
+    onTopMatchChange?.(results[0] ?? null);
+  }, [results, onTopMatchChange]);
 
   return (
     <div ref={containerRef} className="relative">

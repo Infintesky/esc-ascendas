@@ -20,7 +20,7 @@ describe("SearchForm", () => {
   it("shows an error when no destination is selected", async () => {
     render(<SearchForm />);
     fireEvent.click(screen.getByRole("button", { name: /search/i }));
-    expect(await screen.findByText(/select a destination/i)).toBeInTheDocument();
+    expect(await screen.findByText(/pick a destination/i)).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
   });
 
