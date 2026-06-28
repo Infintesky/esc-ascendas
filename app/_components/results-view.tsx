@@ -38,33 +38,44 @@ export function ResultsView({
 
   return (
     <div>
-      <div className="mb-4 flex gap-4">
-        <label>
+      <div className="mb-5 flex flex-wrap items-end gap-4 rounded-lg border border-border bg-card p-4 shadow-sm">
+        <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
           Min stars
           <input
             type="number"
             min={0}
             max={5}
             onChange={(e) => setFilters((f) => ({ ...f, minStars: Number(e.target.value) || undefined }))}
+            className="h-9 w-28 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           />
         </label>
-        <label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
           Max price
           <input
             type="number"
             min={0}
             onChange={(e) => setFilters((f) => ({ ...f, maxPrice: Number(e.target.value) || undefined }))}
+            className="h-9 w-28 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           />
         </label>
-        <label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
           Sort by
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as "price" | "rating")}>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as "price" | "rating")}
+            className="h-9 w-32 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          >
             <option value="price">Price</option>
             <option value="rating">Rating</option>
           </select>
         </label>
       </div>
-      {!completed && <p>Loading more prices…</p>}
+      {!completed && (
+        <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="size-2 animate-pulse rounded-full bg-primary" />
+          Loading more prices…
+        </p>
+      )}
       {listings.length <= 20 ? (
         <div>
           {listings.map((listing) => (

@@ -24,8 +24,10 @@ export default async function SearchPage({
   }
 
   return (
-    <main className="p-8">
-      <h1 className="mb-4 text-xl font-semibold">{hotels.length} hotels found</h1>
+    <main className="mx-auto max-w-3xl px-6 py-10">
+      <h1 className="mb-6 text-2xl font-bold tracking-tight text-foreground">
+        {hotels.length} hotels found
+      </h1>
       <ResultsView hotels={hotels} query={query} />
     </main>
   );

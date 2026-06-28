@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MapPin, Star } from "lucide-react";
 import type { HotelListing } from "@/lib/search/results";
 
 export function HotelCard({
@@ -10,14 +11,41 @@ export function HotelCard({
 }) {
   const qs = new URLSearchParams(query).toString();
   return (
-    <article className="rounded border p-4">
-      <h2 className="font-medium">{listing.name}</h2>
-      <p className="text-sm text-muted-foreground">{listing.address}</p>
-      <p className="text-sm">{"★".repeat(Math.round(listing.rating))}</p>
-      <p className="font-semibold">
-        {listing.price != null ? `SGD ${listing.price}` : "Loading price…"}
-      </p>
-      <Link href={`/hotels/${listing.id}?${qs}`}>Select</Link>
+    <article className="mb-3 flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+      <div className="min-w-0">
+        <h2 className="truncate font-semibold text-foreground">{listing.name}</h2>
+        {listing.address && (
+          <p className="mt-0.5 flex items-center gap-1 truncate text-sm text-muted-foreground">
+            <MapPin className="size-3.5 shrink-0" />
+            {listing.address}
+          </p>
+        )}
+        <p className="mt-1 flex items-center gap-0.5 text-amber-500">
+          {Array.from({ length: Math.round(listing.rating) }).map((_, i) => (
+            <Star key={i} className="size-3.5 fill-current" />
+          ))}
+        </p>
+      </div>
+      <div className="flex shrink-0 flex-col items-end gap-2">
+        <p className="font-semibold text-foreground">
+          {listing.price != null ? (
+            <>
+              <span className="text-xs font-normal text-muted-foreground">SGD </span>
+              {listing.price}
+            </>
+          ) : (
+            <span className="text-sm font-normal text-muted-foreground">
+              Loading price…
+            </span>
+          )}
+        </p>
+        <Link
+          href={`/hotels/${listing.id}?${qs}`}
+          className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+        >
+          Select
+        </Link>
+      </div>
     </article>
   );
 }

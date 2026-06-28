@@ -24,19 +24,40 @@ export default async function HotelDetailPage({
   }
 
   return (
-    <main className="p-8">
-      <h1 className="text-2xl font-semibold">{hotel.name}</h1>
-      <p className="text-muted-foreground">{hotel.address}</p>
-      <p>{"★".repeat(Math.round(hotel.rating))}</p>
-      {images[0] && <img src={images[0]} alt={hotel.name} className="my-4 max-w-md rounded" />}
-      <p dangerouslySetInnerHTML={{ __html: hotel.description }} />
-      <h2 className="mt-6 text-lg font-medium">Amenities</h2>
-      <ul className="list-disc pl-5">
-        {hotel.amenities.map((a) => (
-          <li key={a}>{a}</li>
-        ))}
-      </ul>
-      <h2 className="mt-6 text-lg font-medium">Available rooms</h2>
+    <main className="mx-auto max-w-3xl px-6 py-10">
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">{hotel.name}</h1>
+      <p className="mt-1 text-muted-foreground">{hotel.address}</p>
+      <p className="mt-1 text-amber-500">{"★".repeat(Math.round(hotel.rating))}</p>
+      {images[0] && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={images[0]}
+          alt={hotel.name}
+          className="my-6 aspect-video w-full rounded-xl object-cover shadow-sm"
+        />
+      )}
+      {hotel.description && (
+        <div
+          className="prose prose-sm max-w-none text-foreground/90"
+          dangerouslySetInnerHTML={{ __html: hotel.description }}
+        />
+      )}
+      {hotel.amenities.length > 0 && (
+        <>
+          <h2 className="mt-8 text-lg font-semibold text-foreground">Amenities</h2>
+          <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {hotel.amenities.map((a) => (
+              <li
+                key={a}
+                className="rounded-md border border-border bg-card px-3 py-2 text-sm capitalize text-foreground shadow-sm"
+              >
+                {a}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <h2 className="mt-8 mb-3 text-lg font-semibold text-foreground">Available rooms</h2>
       <RoomList hotelId={id} query={query} />
     </main>
   );
