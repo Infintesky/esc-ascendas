@@ -8,5 +8,10 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./test/setup.ts"],
     globals: true,
+    server: {
+      deps: {
+        inline: ["zod"],
+      },
+    },
   },
 });
