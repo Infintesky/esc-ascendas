@@ -23,6 +23,15 @@ describe("searchDestinations", () => {
   it("respects the result limit", () => {
     expect(searchDestinations(index, "singa", 1)).toHaveLength(1);
   });
+
+  it("ranks an exact prefix match above fuzzy noise", () => {
+    const idx = buildIndex([
+      { uid: "sg", term: "Singapore, Singapore", lat: 0, lng: 0, state: "", type: "city" },
+      { uid: "ls", term: "Laem Sing, Thailand", lat: 0, lng: 0, state: "", type: "city" },
+      { uid: "sb", term: "Sing Buri, Thailand", lat: 0, lng: 0, state: "", type: "city" },
+    ]);
+    expect(searchDestinations(idx, "singapore")[0].term).toBe("Singapore, Singapore");
+  });
 });
 
 describe("buildIndex with duplicate ids", () => {

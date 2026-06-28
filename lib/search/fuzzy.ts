@@ -20,12 +20,35 @@ export function buildIndex(entries: DestinationEntry[]): MiniSearch<DestinationE
   return index;
 }
 
+// Lower tier = better match. Terms are "City, Region, Country"; a query that
+// matches the city (the part before the first comma) ranks above one that only
+// matches the country, and literal matches rank above fuzzy ones. So "singapore"
+// surfaces "Singapore, Singapore" — not "Sentosa, Singapore" or a fuzzy hit.
+function matchTier(term: string, q: string): number {
+  const lower = term.toLowerCase();
+  const city = lower.split(",")[0].trim();
+  if (city === q) return 0; // city exact
+  if (city.startsWith(q)) return 1; // city prefix
+  const tokens = lower.split(/[^a-z0-9]+/).filter(Boolean);
+  if (tokens.some((t) => t === q)) return 2; // any token exact (e.g. country)
+  if (tokens.some((t) => t.startsWith(q))) return 3; // any token prefix
+  if (lower.includes(q)) return 4; // substring
+  return 5; // fuzzy-only
+}
+
 export function searchDestinations(
   index: MiniSearch<DestinationEntry>,
   query: string,
   limit = 8,
 ): DestinationEntry[] {
-  const q = query.trim();
+  const q = query.trim().toLowerCase();
   if (!q) return [];
-  return index.search(q).slice(0, limit) as unknown as DestinationEntry[];
+  const results = index.search(query.trim()) as unknown as (DestinationEntry & {
+    score: number;
+  })[];
+  return results
+    .map((r) => ({ r, tier: matchTier(r.term, q) }))
+    .sort((a, b) => (a.tier !== b.tier ? a.tier - b.tier : b.r.score - a.r.score))
+    .slice(0, limit)
+    .map((x) => x.r);
 }

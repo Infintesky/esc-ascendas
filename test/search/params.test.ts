@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { serializeGuests, validateDates, SearchParamsSchema } from "@/lib/search/params";
+import {
+  serializeGuests,
+  validateDates,
+  SearchParamsSchema,
+  addDaysISO,
+  minCheckinDate,
+  clampInt,
+  MAX_ROOMS,
+  MAX_GUESTS_PER_ROOM,
+} from "@/lib/search/params";
 
 describe("serializeGuests", () => {
   it("serializes one room", () => {
@@ -21,6 +30,30 @@ describe("validateDates", () => {
   });
   it("accepts valid dates", () => {
     expect(validateDates("2026-07-01", "2026-07-05", now).ok).toBe(true);
+  });
+  it("rejects empty / blank dates (regression: NaN comparison slipped through)", () => {
+    expect(validateDates("", "", now).ok).toBe(false);
+    expect(validateDates("2026-07-01", "", now).ok).toBe(false);
+    expect(validateDates("not-a-date", "also-bad", now).ok).toBe(false);
+  });
+});
+
+describe("date helpers", () => {
+  it("addDaysISO advances a date and stays ISO", () => {
+    expect(addDaysISO("2026-10-01", 1)).toBe("2026-10-02");
+    expect(addDaysISO("2026-10-31", 1)).toBe("2026-11-01");
+  });
+  it("minCheckinDate is 3 days ahead of now", () => {
+    expect(minCheckinDate(new Date("2026-06-25T00:00:00Z"))).toBe("2026-06-28");
+  });
+});
+
+describe("clampInt", () => {
+  it("clamps rooms and guests into a sensible range", () => {
+    expect(clampInt(0, 1, MAX_ROOMS)).toBe(1);
+    expect(clampInt(99, 1, MAX_ROOMS)).toBe(MAX_ROOMS);
+    expect(clampInt(3, 1, MAX_GUESTS_PER_ROOM)).toBe(3);
+    expect(clampInt(NaN, 1, MAX_ROOMS)).toBe(1);
   });
 });
 
