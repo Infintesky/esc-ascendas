@@ -1,16 +1,18 @@
+import { Suspense } from "react";
 import { ASCENDA_BASE_URL, ascendaGet } from "@/lib/ascenda/client";
 import { mapHotel, hotelImageUrls } from "@/lib/ascenda/mappers";
 import { RoomList } from "@/app/_components/room-list";
+import { HotelDetailSkeleton } from "@/app/_components/skeletons";
 
-export default async function HotelDetailPage({
-  params,
-  searchParams,
+// Slow part: the static-hotel fetch. Isolated in an async component so the page
+// shell flushes instantly and the detail streams in behind the skeleton.
+async function HotelDetail({
+  id,
+  query,
 }: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  id: string;
+  query: Record<string, string>;
 }) {
-  const { id } = await params;
-  const sp = await searchParams;
   const raw = await ascendaGet<unknown>(
     `${ASCENDA_BASE_URL}/api/hotels/${encodeURIComponent(id)}`,
     { next: { revalidate: 86_400 } },
@@ -18,13 +20,8 @@ export default async function HotelDetailPage({
   const hotel = mapHotel(raw);
   const images = hotelImageUrls(hotel);
 
-  const query: Record<string, string> = {};
-  for (const [k, v] of Object.entries(sp)) {
-    if (typeof v === "string") query[k] = v;
-  }
-
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <>
       <h1 className="text-3xl font-bold tracking-tight text-foreground">{hotel.name}</h1>
       <p className="mt-1 text-muted-foreground">{hotel.address}</p>
       <p className="mt-1 text-amber-500">{"★".repeat(Math.round(hotel.rating))}</p>
@@ -59,6 +56,30 @@ export default async function HotelDetailPage({
       )}
       <h2 className="mt-8 mb-3 text-lg font-semibold text-foreground">Available rooms</h2>
       <RoomList hotelId={id} query={query} />
+    </>
+  );
+}
+
+export default async function HotelDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { id } = await params;
+  const sp = await searchParams;
+
+  const query: Record<string, string> = {};
+  for (const [k, v] of Object.entries(sp)) {
+    if (typeof v === "string") query[k] = v;
+  }
+
+  return (
+    <main className="mx-auto max-w-3xl px-6 py-10">
+      <Suspense fallback={<HotelDetailSkeleton />}>
+        <HotelDetail id={id} query={query} />
+      </Suspense>
     </main>
   );
 }
