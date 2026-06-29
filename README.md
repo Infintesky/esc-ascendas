@@ -14,7 +14,8 @@ Provide students with a real-world example of a scalable and secure software sys
 
 | Layer | Choice |
 | --- | --- |
-| Runtime / package manager | [Bun](https://bun.sh) |
+| Package manager | [Bun](https://bun.sh) |
+| Runtime | [Node](https://nodejs.org) ≥ 20.9 (runs Next.js) |
 | Framework / Routing / Data Fetching | [Next.js 16](https://nextjs.org) (App Router) + [React 19](https://react.dev) |
 | ORM | [Drizzle ORM](https://orm.drizzle.team) + [postgres.js](https://github.com/porsager/postgres) |
 | Database | [Supabase Postgres](https://supabase.com) |
@@ -28,15 +29,15 @@ Provide students with a real-world example of a scalable and secure software sys
 
 ## Features
 
-| Status | Feature |
+| Feature | Description |
 | --- | --- |
-| ✅ | **Destination autocomplete** — fuzzy, city-token-ranked search over ~70k destinations, built into a client index at build time |
-| ✅ | **Search form** — past-date graying, auto check-out from check-in, room/guest caps, top-match auto-select |
-| ✅ | **Results page** (`/search`) — supplier hotel list joined with live prices, polling until prices settle, filter + sort, list virtualization, Suspense streaming |
-| ✅ | **Hotel detail** (`/hotels/[id]`) — images, amenities, fresh per-room rates |
-| ✅ | **Booking + payment** (`/book`) — guest/billing form, Stripe Elements (card data never touches our server), PaymentIntent confirmation, masked-card confirmation page |
-| ✅ | **Theming** — emerald brand, light/dark mode across all pages |
-| 🚧 | **Accounts, points & GDPR** — DB schema (`users`, `points_ledger`) exists; auth, points earn/redeem, account pages and GDPR export/delete are not yet wired |
+| **Destination autocomplete** | Fuzzy, city-token-ranked search over ~70k destinations, built into a client index at build time |
+| **Search form** | Past-date graying, auto check-out from check-in, room/guest caps, top-match auto-select |
+| **Results page** (`/search`) | Supplier hotel list joined with live prices, polling until prices settle, filter + sort, list virtualization, Suspense streaming |
+| **Hotel detail** (`/hotels/[id]`) | Images, amenities, fresh per-room rates |
+| **Booking + payment** (`/book`) | Guest/billing form, Stripe Elements (card data never touches our server), PaymentIntent confirmation, masked-card confirmation page |
+| **Theming** | Emerald brand, light/dark mode across all pages |
+| **Accounts, points & GDPR** _(planned)_ | DB schema (`users`, `points_ledger`) exists; auth, points earn/redeem, account pages and GDPR export/delete are not yet wired |
 
 ## Architecture Notes
 
@@ -44,14 +45,30 @@ Provide students with a real-world example of a scalable and secure software sys
 - **Abstraction seam**: all upstream payloads pass through `lib/ascenda/mappers.ts` into Zod-validated internal types (`lib/ascenda/types.ts`), decoupling the UI from supplier shapes.
 - **Live pricing**: Ascenda returns prices incrementally (`completed: false`), so `hooks/use-hotel-prices.ts` polls and merges results by hotel id.
 
-## Local Development
+## Runtime & package manager
 
-This repo runs on **Bun** for installs/scripts, but Next.js dev/build needs **Node ≥ 20.9** (the build and `next start` are run under Node).
+**Bun is the package manager; Node is the runtime for Next.js.**
+
+- **Bun** handles installs (`bun.lock` is the only lockfile) and runs the
+  TypeScript helper scripts directly (e.g. the destination-index builder).
+- **Node ≥ 20.9** runs Next.js. `bun run <script>` uses Bun only as the script
+  runner — `next` itself spawns under whatever `node` is on your `PATH`. (Next
+  *can* run under the Bun runtime via `bun --bun run`, but we use Node: the
+  Turbopack dev server pegs the CPU under Bun.)
+
+If you use `nvm`, select a supported Node before building:
+
+```sh
+nvm use 22       # or any Node >= 20.9
+node -v          # verify — Next 16 will refuse older versions
+```
+
+## Local Development
 
 ```sh
 bun install
-cp .env.example .env          # fill in Supabase + Stripe values
-bun --bun run dev             # http://localhost:3000
+cp .env.example .env       # fill in Supabase + Stripe values
+bun run dev                # http://localhost:3000  (next dev, under Node)
 ```
 
 > The destination search index is generated automatically before each build
@@ -61,16 +78,16 @@ bun --bun run dev             # http://localhost:3000
 ## Commands
 
 ```sh
-bun --bun run dev          # dev server (next dev)
-bun --bun run build        # production build (regenerates search index first)
-bun --bun run start        # serve the production build
-bun --bun run lint         # eslint (flat config)
-bun --bun run test         # run all tests (vitest)
-bun --bun run test:watch   # watch mode
-bun --bun run build:index  # rebuild the destination autocomplete index
-bun --bun run db:generate  # generate Drizzle migrations
-bun --bun run db:migrate   # apply migrations
-bun --bun run db:push      # push schema directly (dev shortcut)
+bun run dev          # dev server (next dev)
+bun run build        # production build (regenerates search index first)
+bun run start        # serve the production build
+bun run lint         # eslint (flat config)
+bun run test         # run all tests (vitest)
+bun run test:watch   # watch mode
+bun run build:index  # rebuild the destination autocomplete index
+bun run db:generate  # generate Drizzle migrations
+bun run db:migrate   # apply migrations
+bun run db:push      # push schema directly (dev shortcut)
 ```
 
 ## Environment Variables
