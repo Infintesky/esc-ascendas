@@ -56,10 +56,11 @@ Provide students with a real-world example of a scalable and secure software sys
   *can* run under the Bun runtime via `bun --bun run`, but we use Node: the
   Turbopack dev server pegs the CPU under Bun.)
 
-If you use `nvm`, select a supported Node before building:
+The Node version is pinned in `.nvmrc`, and `engines` requires `node >= 20.9.0`.
+If you use `nvm`, just run `nvm use` in the project root before building:
 
 ```sh
-nvm use 22       # or any Node >= 20.9
+nvm use          # reads .nvmrc → Node 22
 node -v          # verify — Next 16 will refuse older versions
 ```
 
