@@ -48,3 +48,6 @@ CLAUDE.md
 
 # generated UML renders
 docs/uml/rendered/
+
+# Local design docs — kept out of version control
+docs/
