@@ -44,7 +44,7 @@ export function LandingHero() {
           className="mt-6 text-balance text-5xl font-bold tracking-tight text-foreground sm:text-6xl"
         >
           Find your stay,{" "}
-          <span className="bg-gradient-to-r from-primary to-teal-400 bg-clip-text text-transparent">
+          <span className="text-primary">
             earn as you go
           </span>
         </motion.h1>

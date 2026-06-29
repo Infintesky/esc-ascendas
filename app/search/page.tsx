@@ -24,7 +24,7 @@ async function SearchResults({
   return (
     <>
       <h1 className="mb-6 text-2xl font-bold tracking-tight text-foreground">
-        <span className="bg-gradient-to-r from-primary to-teal-400 bg-clip-text text-transparent">
+        <span className="text-primary">
           {hotels.length}
         </span>{" "}
         hotels found
