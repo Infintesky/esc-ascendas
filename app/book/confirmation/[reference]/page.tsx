@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { CheckCircle2 } from "lucide-react";
 import { db } from "@/lib/db/client";
 import { bookings } from "@/lib/db/schema";
+import { SiteShell } from "@/app/_components/site-shell";
 
 export type BookingSummaryData = {
   reference: string;
@@ -32,7 +33,7 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export function BookingSummary({ booking }: { booking: BookingSummaryData }) {
   return (
-    <section className="rounded-xl border border-border bg-card p-6 shadow-sm">
+    <section className="rounded-2xl bg-card/90 p-6 ring-1 ring-foreground/10 shadow-xl shadow-primary/5 backdrop-blur">
       <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold capitalize text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
         <CheckCircle2 className="size-4" />
         Booking {booking.status}
@@ -58,11 +59,19 @@ export default async function ConfirmationPage({
   const rows = await db.select().from(bookings).where(eq(bookings.bookingReference, reference)).limit(1);
   const b = rows[0];
   if (!b) {
-    return <main className="mx-auto max-w-xl px-6 py-10">Booking not found.</main>;
+    return (
+      <SiteShell width="sm">
+        <p className="text-muted-foreground">Booking not found.</p>
+      </SiteShell>
+    );
   }
   return (
-    <main className="mx-auto max-w-xl px-6 py-10">
-      <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground">Thank you!</h1>
+    <SiteShell width="sm">
+      <h1 className="mb-1 text-2xl font-bold tracking-tight text-foreground">
+        <span className="bg-gradient-to-r from-primary to-teal-400 bg-clip-text text-transparent">
+          Thank you!
+        </span>
+      </h1>
       <p className="mb-6 text-muted-foreground">Your booking is all set.</p>
       <BookingSummary
         booking={{
@@ -75,6 +84,6 @@ export default async function ConfirmationPage({
       <Link href="/" className="mt-6 inline-block text-sm font-medium text-primary hover:underline">
         ← Back to search
       </Link>
-    </main>
+    </SiteShell>
   );
 }

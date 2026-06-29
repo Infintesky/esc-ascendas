@@ -3,6 +3,8 @@ import { ASCENDA_BASE_URL, ascendaGet } from "@/lib/ascenda/client";
 import { mapHotel, hotelImageUrls } from "@/lib/ascenda/mappers";
 import { RoomList } from "@/app/_components/room-list";
 import { HotelDetailSkeleton } from "@/app/_components/skeletons";
+import { SiteShell } from "@/app/_components/site-shell";
+import { Star } from "lucide-react";
 
 // Slow part: the static-hotel fetch. Isolated in an async component so the page
 // shell flushes instantly and the detail streams in behind the skeleton.
@@ -24,13 +26,17 @@ async function HotelDetail({
     <>
       <h1 className="text-3xl font-bold tracking-tight text-foreground">{hotel.name}</h1>
       <p className="mt-1 text-muted-foreground">{hotel.address}</p>
-      <p className="mt-1 text-amber-500">{"★".repeat(Math.round(hotel.rating))}</p>
+      <p className="mt-1.5 flex items-center gap-0.5 text-amber-500">
+        {Array.from({ length: Math.round(hotel.rating) }).map((_, i) => (
+          <Star key={i} className="size-4 fill-current" />
+        ))}
+      </p>
       {images[0] && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={images[0]}
           alt={hotel.name}
-          className="my-6 aspect-video w-full rounded-xl object-cover shadow-sm"
+          className="my-6 aspect-video w-full rounded-2xl object-cover ring-1 ring-foreground/10"
         />
       )}
       {hotel.description && (
@@ -46,7 +52,7 @@ async function HotelDetail({
             {hotel.amenities.map((a) => (
               <li
                 key={a}
-                className="rounded-md border border-border bg-card px-3 py-2 text-sm capitalize text-foreground shadow-sm"
+                className="rounded-lg bg-card px-3 py-2 text-sm capitalize text-foreground ring-1 ring-foreground/10"
               >
                 {a}
               </li>
@@ -76,10 +82,10 @@ export default async function HotelDetailPage({
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <SiteShell width="md">
       <Suspense fallback={<HotelDetailSkeleton />}>
         <HotelDetail id={id} query={query} />
       </Suspense>
-    </main>
+    </SiteShell>
   );
 }

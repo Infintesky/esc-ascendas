@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
 import { PaymentFields } from "./payment-fields";
+import { Button } from "@/components/ui/button";
 
 type Prefill = Record<string, string>;
 
@@ -78,7 +79,7 @@ export function BookingForm({ prefill }: { prefill: Prefill }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="space-y-6 rounded-xl border border-border bg-card p-6 shadow-sm"
+      className="space-y-6 rounded-2xl bg-card/90 p-6 ring-1 ring-foreground/10 shadow-xl shadow-primary/5 backdrop-blur"
     >
       <fieldset className="space-y-4">
         <legend className="mb-2 text-sm font-semibold text-foreground">Guest details</legend>
@@ -137,13 +138,9 @@ export function BookingForm({ prefill }: { prefill: Prefill }) {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60"
-      >
+      <Button type="submit" size="lg" disabled={submitting} className="h-11 w-full text-sm font-semibold">
         {submitting ? "Processing…" : priceLabel ? `Pay ${priceLabel} & book` : "Pay & book"}
-      </button>
+      </Button>
     </form>
   );
 }

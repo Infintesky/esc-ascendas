@@ -11,6 +11,7 @@ import {
 } from "@/lib/search/results";
 import type { Hotel } from "@/lib/ascenda/types";
 import { HotelCard } from "./hotel-card";
+import { FadeItem } from "./motion-primitives";
 
 export function ResultsView({
   hotels,
@@ -38,7 +39,7 @@ export function ResultsView({
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-end gap-4 rounded-lg border border-border bg-card p-4 shadow-sm">
+      <div className="mb-5 flex flex-wrap items-end gap-4 rounded-xl bg-card/80 p-4 ring-1 ring-foreground/10 backdrop-blur">
         <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
           Min stars
           <input
@@ -78,8 +79,10 @@ export function ResultsView({
       )}
       {listings.length <= 20 ? (
         <div>
-          {listings.map((listing) => (
-            <HotelCard key={listing.id} listing={listing} query={query} />
+          {listings.map((listing, i) => (
+            <FadeItem key={listing.id} index={Math.min(i, 8)}>
+              <HotelCard listing={listing} query={query} />
+            </FadeItem>
           ))}
         </div>
       ) : (

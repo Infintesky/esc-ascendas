@@ -3,6 +3,7 @@ import { ASCENDA_BASE_URL, ascendaGet } from "@/lib/ascenda/client";
 import { mapHotel } from "@/lib/ascenda/mappers";
 import { ResultsView } from "@/app/_components/results-view";
 import { ResultsSkeleton } from "@/app/_components/skeletons";
+import { SiteShell } from "@/app/_components/site-shell";
 
 // Slow part: the static-hotel fetch can take several seconds upstream. It lives
 // in its own async component so the page shell + skeleton flush immediately and
@@ -23,7 +24,10 @@ async function SearchResults({
   return (
     <>
       <h1 className="mb-6 text-2xl font-bold tracking-tight text-foreground">
-        {hotels.length} hotels found
+        <span className="bg-gradient-to-r from-primary to-teal-400 bg-clip-text text-transparent">
+          {hotels.length}
+        </span>{" "}
+        hotels found
       </h1>
       <ResultsView hotels={hotels} query={query} />
     </>
@@ -38,7 +42,11 @@ export default async function SearchPage({
   const sp = await searchParams;
   const destinationId = typeof sp.destination_id === "string" ? sp.destination_id : "";
   if (!destinationId) {
-    return <main className="p-8">Missing destination.</main>;
+    return (
+      <SiteShell width="md">
+        <p className="text-muted-foreground">Missing destination.</p>
+      </SiteShell>
+    );
   }
 
   const query: Record<string, string> = {};
@@ -47,10 +55,10 @@ export default async function SearchPage({
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
+    <SiteShell width="md">
       <Suspense fallback={<ResultsSkeleton />}>
         <SearchResults destinationId={destinationId} query={query} />
       </Suspense>
-    </main>
+    </SiteShell>
   );
 }

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { BookingForm } from "@/app/_components/booking-form";
+import { SiteShell } from "@/app/_components/site-shell";
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? "");
 
@@ -29,13 +30,13 @@ function BookingFormWithParams() {
 
 export default function BookPage() {
   return (
-    <main className="mx-auto max-w-xl px-6 py-10">
+    <SiteShell width="sm">
       <h1 className="mb-6 text-2xl font-bold tracking-tight text-foreground">
         Complete your booking
       </h1>
       <Suspense fallback={null}>
         <BookingFormWithParams />
       </Suspense>
-    </main>
+    </SiteShell>
   );
 }

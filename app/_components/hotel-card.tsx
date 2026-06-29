@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MapPin, Star } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { HotelListing } from "@/lib/search/results";
 
 export function HotelCard({
@@ -11,7 +12,7 @@ export function HotelCard({
 }) {
   const qs = new URLSearchParams(query).toString();
   return (
-    <article className="mb-3 flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md">
+    <article className="mb-3 flex items-start justify-between gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5 hover:ring-primary/30">
       <div className="min-w-0">
         <h2 className="truncate font-semibold text-foreground">{listing.name}</h2>
         {listing.address && (
@@ -39,12 +40,9 @@ export function HotelCard({
             </span>
           )}
         </p>
-        <Link
-          href={`/hotels/${listing.id}?${qs}`}
-          className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
+        <Button size="lg" render={<Link href={`/hotels/${listing.id}?${qs}`} />}>
           Select
-        </Link>
+        </Button>
       </div>
     </article>
   );
