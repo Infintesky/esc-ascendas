@@ -1,0 +1,5 @@
+export const EARN_RATE = 1; // points per currency unit
+
+export function pointsForBooking(price: number): number {
+  return Math.max(0, Math.floor(price * EARN_RATE));
+}
