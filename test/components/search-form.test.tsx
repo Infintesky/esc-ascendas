@@ -47,12 +47,10 @@ describe("SearchForm", () => {
     fireEvent.change(input, { target: { value: "singa" } });
     fireEvent.click(await screen.findByText(/Singapore, Singapore/));
 
-    // Pick check-in via the shadcn Calendar popover.
+    // Pick the stay as a range in the shadcn Calendar popover: first click sets
+    // the start, second click sets the end and closes the popover.
     fireEvent.click(screen.getByRole("button", { name: /check-in/i }));
     await pickDay("10/15/2026");
-
-    // Pick check-out via its calendar.
-    fireEvent.click(screen.getByRole("button", { name: /check-out/i }));
     await pickDay("10/20/2026");
 
     fireEvent.click(screen.getByRole("button", { name: /search/i }));

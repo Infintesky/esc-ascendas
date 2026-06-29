@@ -4,12 +4,11 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { DestinationAutocomplete } from "./destination-autocomplete";
-import { DateField } from "./date-field";
+import { DateRangeField } from "./date-range-field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   validateDates,
-  addDaysISO,
   minCheckinDate,
   clampInt,
   MAX_ROOMS,
@@ -31,18 +30,6 @@ export function SearchForm() {
   const [error, setError] = useState<string | null>(null);
 
   const minCheckin = useMemo(() => minCheckinDate(), []);
-  // Check-out must be at least the day after check-in (or after the earliest
-  // allowed check-in when none is picked yet).
-  const minCheckout = addDaysISO(checkin || minCheckin, 1);
-
-  function handleCheckinChange(value: string) {
-    setCheckin(value);
-    // Keep check-out anchored to check-in: bump it forward if it's now empty
-    // or no longer after check-in.
-    if (value && (!checkout || checkout <= value)) {
-      setCheckout(addDaysISO(value, 1));
-    }
-  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -81,20 +68,18 @@ export function SearchForm() {
       />
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <DateField
-          label="Check-in"
-          ariaLabel="Check-in"
-          min={minCheckin}
-          value={checkin}
-          onChange={handleCheckinChange}
-        />
-        <DateField
-          label="Check-out"
-          ariaLabel="Check-out"
-          min={minCheckout}
-          value={checkout}
-          onChange={setCheckout}
-        />
+        <div className="sm:col-span-2">
+          <DateRangeField
+            label="Check-in — Check-out"
+            min={minCheckin}
+            checkin={checkin}
+            checkout={checkout}
+            onChange={({ checkin, checkout }) => {
+              setCheckin(checkin);
+              setCheckout(checkout);
+            }}
+          />
+        </div>
         <div>
           <label className={labelClass}>Rooms</label>
           <Input
