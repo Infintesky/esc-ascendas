@@ -4,7 +4,7 @@ import { ResultsView } from "@/app/_components/results-view";
 import type { Hotel } from "@/lib/ascenda/types";
 
 const hotels: Hotel[] = [
-  { id: "h1", name: "Hotel One", latitude: 0, longitude: 0, address: "", rating: 5, description: "", amenities: [], imagePrefix: "", imageSuffix: "", imageCount: 0 },
+  { id: "h1", name: "Hotel One", latitude: 0, longitude: 0, address: "", rating: 5, guestRating: 88, description: "", amenities: [], imagePrefix: "", imageSuffix: "", imageCount: 0 },
 ];
 
 describe("ResultsView", () => {

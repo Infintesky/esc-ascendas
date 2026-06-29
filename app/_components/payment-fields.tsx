@@ -12,7 +12,7 @@ export function PaymentFields() {
         <CardElement options={{ style: { base: { fontSize: "14px" } } }} />
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        Card data is sent directly to Stripe — it never touches our server.
+        Card data is sent directly to Stripe; it never touches our server.
       </p>
     </div>
   );

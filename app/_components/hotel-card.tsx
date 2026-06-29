@@ -27,11 +27,19 @@ export function HotelCard({
             {listing.address}
           </p>
         )}
-        <p className="mt-1 flex items-center gap-0.5 text-amber-500">
-          {Array.from({ length: Math.round(listing.rating) }).map((_, i) => (
-            <Star key={i} className="size-3.5 fill-current" />
-          ))}
-        </p>
+        <div className="mt-1 flex items-center gap-3">
+          <p className="flex items-center gap-0.5 text-amber-500">
+            {Array.from({ length: Math.round(listing.rating) }).map((_, i) => (
+              <Star key={i} className="size-3.5 fill-current" />
+            ))}
+          </p>
+          {listing.guestRating > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary">
+              <span className="font-semibold">{(listing.guestRating / 10).toFixed(1)}</span>
+              <span className="text-muted-foreground">guest score</span>
+            </span>
+          )}
+        </div>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-2">
         <div className="text-right">

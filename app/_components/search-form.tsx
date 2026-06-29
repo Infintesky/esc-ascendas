@@ -70,7 +70,7 @@ export function SearchForm() {
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <DateRangeField
-            label="Check-in — Check-out"
+            label="Check-in / Check-out"
             min={minCheckin}
             checkin={checkin}
             checkout={checkout}

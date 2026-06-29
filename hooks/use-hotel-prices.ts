@@ -3,8 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import type { PriceResult } from "@/lib/ascenda/types";
 
-const POLL_INTERVAL_MS = 2000;
-const MAX_POLLS = 20; // ~40s ceiling
+// Ascenda computes the whole destination's prices then returns them all at once,
+// so the only lever for "first results sooner" is how quickly we re-poll while it
+// warms up. Poll aggressively at first, then back off to spare the upstream.
+const FAST_INTERVAL_MS = 600;
+const SLOW_INTERVAL_MS = 2000;
+const FAST_POLLS = 8; // ~4.8s of fast polling before backing off
+const MAX_POLLS = 26; // ~40s ceiling overall
 
 export function useHotelPrices(query: Record<string, string>) {
   const [hotels, setHotels] = useState<PriceResult[]>([]);
@@ -34,7 +39,7 @@ export function useHotelPrices(query: Record<string, string>) {
         if (data.completed || polls >= MAX_POLLS) {
           setCompleted(true);
         } else {
-          setTimeout(poll, POLL_INTERVAL_MS);
+          setTimeout(poll, polls < FAST_POLLS ? FAST_INTERVAL_MS : SLOW_INTERVAL_MS);
         }
       } catch (e) {
         if (active) setError((e as Error).message);

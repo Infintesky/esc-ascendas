@@ -29,7 +29,7 @@ export function LandingHero() {
           variants={fadeUp}
           initial="hidden"
           animate="show"
-          className="text-balance text-5xl font-bold tracking-tight text-foreground sm:text-6xl"
+          className="whitespace-nowrap text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl"
         >
           Ascenda Loyalty ·{" "}
           <span className="text-primary">points-powered travel</span>

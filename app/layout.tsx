@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ascenda Loyalty — Hotel Booking",
+  title: "Ascenda Loyalty · Hotel Booking",
   description: "Search hotels worldwide and earn loyalty points on every booking.",
 };
 

@@ -14,7 +14,7 @@ import type { Hotel } from "@/lib/ascenda/types";
 import { HotelCard } from "./hotel-card";
 import { FadeItem } from "./motion-primitives";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import {
   Select,
   SelectContent,
@@ -24,6 +24,26 @@ import {
 } from "@/components/ui/select";
 
 const PAGE_SIZE = 10;
+const PRICE_MIN = 50;
+const PRICE_MAX = 5000;
+const SORT_LABELS: Record<"price" | "rating", string> = {
+  price: "Price",
+  rating: "Rating",
+};
+const STAR_OPTIONS = [
+  { value: "any", label: "Any" },
+  { value: "3", label: "3+ stars" },
+  { value: "4", label: "4+ stars" },
+  { value: "5", label: "5 stars" },
+];
+const GUEST_OPTIONS = [
+  { value: "any", label: "Any" },
+  { value: "70", label: "7.0+" },
+  { value: "80", label: "8.0+" },
+  { value: "90", label: "9.0+" },
+];
+const labelFor = (opts: { value: string; label: string }[]) => (v: string) =>
+  opts.find((o) => o.value === v)?.label ?? v;
 
 export function ResultsView({
   hotels,
@@ -34,6 +54,7 @@ export function ResultsView({
 }) {
   const { hotels: prices } = useHotelPrices(query);
   const [filters, setFilters] = useState<ResultFilters>({});
+  const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
   const [sortBy, setSortBy] = useState<"price" | "rating">("price");
   const [page, setPage] = useState(0);
 
@@ -63,64 +84,84 @@ export function ResultsView({
   const start = page * PAGE_SIZE;
   const pageItems = listings.slice(start, start + PAGE_SIZE);
 
-  function setNum(key: keyof ResultFilters) {
-    return (e: React.ChangeEvent<HTMLInputElement>) => {
-      const v = Number(e.target.value);
-      setFilters((f) => ({ ...f, [key]: e.target.value === "" || Number.isNaN(v) ? undefined : v }));
-      setPage(0);
-    };
+  function commitPriceRange([lo, hi]: [number, number]) {
+    setFilters((f) => ({
+      ...f,
+      minPrice: lo > PRICE_MIN ? lo : undefined,
+      maxPrice: hi < PRICE_MAX ? hi : undefined,
+    }));
+    setPage(0);
   }
 
   return (
     <div>
-      <div className="mb-5 flex flex-wrap items-end gap-4 rounded-xl bg-card/80 p-4 ring-1 ring-foreground/10 backdrop-blur">
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+      <div className="mb-5 flex flex-wrap items-end gap-6 rounded-xl bg-card/80 p-4 ring-1 ring-foreground/10 backdrop-blur">
+        <div className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
           Min stars
-          <Input
-            type="number"
-            min={0}
-            max={5}
-            placeholder="Any"
-            onChange={setNum("minStars")}
-            className="h-9 w-24"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-          Min guest rating
-          <Input
-            type="number"
-            min={0}
-            max={100}
-            placeholder="Any"
-            onChange={setNum("minGuestRating")}
-            className="h-9 w-28"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-          Min $/night
-          <Input
-            type="number"
-            min={0}
-            placeholder="Any"
-            onChange={setNum("minPrice")}
-            className="h-9 w-24"
-          />
-        </label>
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
-          Max $/night
-          <Input
-            type="number"
-            min={0}
-            placeholder="Any"
-            onChange={setNum("maxPrice")}
-            className="h-9 w-24"
-          />
-        </label>
+          <Select
+            value={filters.minStars ? String(filters.minStars) : "any"}
+            onValueChange={(v) => {
+              setFilters((f) => ({ ...f, minStars: v === "any" ? undefined : Number(v) }));
+              setPage(0);
+            }}
+          >
+            <SelectTrigger className="h-9 w-28">
+              <SelectValue>{labelFor(STAR_OPTIONS)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {STAR_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
+          Min guest score
+          <Select
+            value={filters.minGuestRating ? String(filters.minGuestRating) : "any"}
+            onValueChange={(v) => {
+              setFilters((f) => ({ ...f, minGuestRating: v === "any" ? undefined : Number(v) }));
+              setPage(0);
+            }}
+          >
+            <SelectTrigger className="h-9 w-28">
+              <SelectValue>{labelFor(GUEST_OPTIONS)}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {GUEST_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex min-w-56 flex-col gap-1.5 text-sm font-medium text-foreground">
+          <div className="flex items-center justify-between">
+            <span>Price / night</span>
+            <span className="text-xs font-normal text-muted-foreground">
+              SGD {priceRange[0]}
+              {priceRange[1] >= PRICE_MAX ? "+" : ` – ${priceRange[1]}`}
+            </span>
+          </div>
+          <div className="flex h-9 items-center">
+            <Slider
+              min={PRICE_MIN}
+              max={PRICE_MAX}
+              step={50}
+              value={priceRange}
+              onValueChange={(v) => setPriceRange(v as [number, number])}
+              onValueCommitted={(v) => commitPriceRange(v as [number, number])}
+              className="w-full"
+            />
+          </div>
+        </div>
+
         <div className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
           Sort by
           <Select value={sortBy} onValueChange={(v) => { setSortBy(v as "price" | "rating"); setPage(0); }}>
             <SelectTrigger className="h-9 w-32">
-              <SelectValue />
+              <SelectValue>{(v: string) => SORT_LABELS[v as "price" | "rating"]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="price">Price</SelectItem>

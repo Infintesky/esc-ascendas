@@ -34,8 +34,8 @@ export function DateRangeField({
 
   const labelText = from
     ? to
-      ? `${format(from, "d MMM")} — ${format(to, "d MMM yyyy")}`
-      : `${format(from, "d MMM yyyy")} — …`
+      ? `${format(from, "d MMM")} to ${format(to, "d MMM yyyy")}`
+      : `${format(from, "d MMM yyyy")} to ...`
     : "Select dates";
 
   return (
