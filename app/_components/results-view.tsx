@@ -12,6 +12,14 @@ import {
 import type { Hotel } from "@/lib/ascenda/types";
 import { HotelCard } from "./hotel-card";
 import { FadeItem } from "./motion-primitives";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function ResultsView({
   hotels,
@@ -40,36 +48,39 @@ export function ResultsView({
   return (
     <div>
       <div className="mb-5 flex flex-wrap items-end gap-4 rounded-xl bg-card/80 p-4 ring-1 ring-foreground/10 backdrop-blur">
-        <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
           Min stars
-          <input
+          <Input
             type="number"
             min={0}
             max={5}
+            placeholder="Any"
             onChange={(e) => setFilters((f) => ({ ...f, minStars: Number(e.target.value) || undefined }))}
-            className="h-9 w-28 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className="h-9 w-28"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
+        <label className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
           Max price
-          <input
+          <Input
             type="number"
             min={0}
+            placeholder="Any"
             onChange={(e) => setFilters((f) => ({ ...f, maxPrice: Number(e.target.value) || undefined }))}
-            className="h-9 w-28 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            className="h-9 w-28"
           />
         </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
+        <div className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
           Sort by
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as "price" | "rating")}
-            className="h-9 w-32 rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            <option value="price">Price</option>
-            <option value="rating">Rating</option>
-          </select>
-        </label>
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as "price" | "rating")}>
+            <SelectTrigger className="h-9 w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="price">Price</SelectItem>
+              <SelectItem value="rating">Rating</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       {!completed && (
         <p className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
