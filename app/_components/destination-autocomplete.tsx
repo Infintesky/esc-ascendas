@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type MiniSearch from "minisearch";
 import { MapPin } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { buildIndex, searchDestinations } from "@/lib/search/fuzzy";
 import type { DestinationEntry } from "@/lib/search/destination";
 
@@ -69,7 +70,7 @@ export function DestinationAutocomplete({
       </label>
       <div className="relative">
         <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input
+        <Input
           aria-label="Destination"
           placeholder="City or hotel name"
           value={query}
@@ -82,7 +83,7 @@ export function DestinationAutocomplete({
             ensureIndex();
             setOpen(true);
           }}
-          className="h-11 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm shadow-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+          className="h-11 pl-9"
         />
       </div>
       {open && loading && !index && query.length > 0 && (

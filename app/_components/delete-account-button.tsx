@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
 
 export function DeleteAccountButton() {
   const router = useRouter();
@@ -22,13 +23,8 @@ export function DeleteAccountButton() {
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleDelete}
-      disabled={busy}
-      className="rounded-md border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:hover:bg-red-950"
-    >
+    <Button type="button" variant="destructive" onClick={handleDelete} disabled={busy}>
       Delete account
-    </button>
+    </Button>
   );
 }

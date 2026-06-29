@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { DestinationAutocomplete } from "./destination-autocomplete";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   validateDates,
   addDaysISO,
@@ -14,8 +16,6 @@ import {
 } from "@/lib/search/params";
 import type { DestinationEntry } from "@/lib/search/destination";
 
-const fieldClass =
-  "h-11 w-full rounded-md border border-input bg-background px-3 text-sm shadow-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40";
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
 export function SearchForm() {
@@ -82,48 +82,48 @@ export function SearchForm() {
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
           <label className={labelClass}>Check-in</label>
-          <input
+          <Input
             type="date"
             aria-label="Check-in"
             min={minCheckin}
             value={checkin}
             onChange={(e) => handleCheckinChange(e.target.value)}
-            className={fieldClass}
+            className="h-11"
           />
         </div>
         <div>
           <label className={labelClass}>Check-out</label>
-          <input
+          <Input
             type="date"
             aria-label="Check-out"
             min={minCheckout}
             value={checkout}
             onChange={(e) => setCheckout(e.target.value)}
-            className={fieldClass}
+            className="h-11"
           />
         </div>
         <div>
           <label className={labelClass}>Rooms</label>
-          <input
+          <Input
             type="number"
             aria-label="Rooms"
             min={1}
             max={MAX_ROOMS}
             value={rooms}
             onChange={(e) => setRooms(clampInt(Number(e.target.value), 1, MAX_ROOMS))}
-            className={fieldClass}
+            className="h-11"
           />
         </div>
         <div>
           <label className={labelClass}>Guests per room</label>
-          <input
+          <Input
             type="number"
             aria-label="Guests"
             min={1}
             max={MAX_GUESTS_PER_ROOM}
             value={guests}
             onChange={(e) => setGuests(clampInt(Number(e.target.value), 1, MAX_GUESTS_PER_ROOM))}
-            className={fieldClass}
+            className="h-11"
           />
         </div>
       </div>
@@ -134,13 +134,10 @@ export function SearchForm() {
         </p>
       )}
 
-      <button
-        type="submit"
-        className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
-      >
+      <Button type="submit" size="lg" className="mt-6 h-11 w-full gap-2 text-sm font-semibold">
         <Search className="size-4" />
         Search
-      </button>
+      </Button>
     </form>
   );
 }
