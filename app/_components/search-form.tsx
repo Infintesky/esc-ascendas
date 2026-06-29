@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { DestinationAutocomplete } from "./destination-autocomplete";
+import { DateField } from "./date-field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,28 +81,20 @@ export function SearchForm() {
       />
 
       <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label className={labelClass}>Check-in</label>
-          <Input
-            type="date"
-            aria-label="Check-in"
-            min={minCheckin}
-            value={checkin}
-            onChange={(e) => handleCheckinChange(e.target.value)}
-            className="h-11"
-          />
-        </div>
-        <div>
-          <label className={labelClass}>Check-out</label>
-          <Input
-            type="date"
-            aria-label="Check-out"
-            min={minCheckout}
-            value={checkout}
-            onChange={(e) => setCheckout(e.target.value)}
-            className="h-11"
-          />
-        </div>
+        <DateField
+          label="Check-in"
+          ariaLabel="Check-in"
+          min={minCheckin}
+          value={checkin}
+          onChange={handleCheckinChange}
+        />
+        <DateField
+          label="Check-out"
+          ariaLabel="Check-out"
+          min={minCheckout}
+          value={checkout}
+          onChange={setCheckout}
+        />
         <div>
           <label className={labelClass}>Rooms</label>
           <Input
