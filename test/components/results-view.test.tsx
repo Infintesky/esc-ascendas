@@ -15,8 +15,9 @@ describe("ResultsView", () => {
   });
   afterEach(() => vi.unstubAllGlobals());
 
-  it("renders hotels with their price once polling completes", async () => {
-    render(<ResultsView hotels={hotels} query={{ destination_id: "RsBU", checkin: "2026-10-01", checkout: "2026-10-07", rooms: "1", guests: "2" }} />);
+  it("renders hotels with their per-night price once polling completes", async () => {
+    // 1-night stay so the per-night price equals the supplier stay total.
+    render(<ResultsView hotels={hotels} query={{ destination_id: "RsBU", checkin: "2026-10-01", checkout: "2026-10-02", rooms: "1", guests: "2" }} />);
     expect(screen.getByText("Hotel One")).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText(/250/)).toBeInTheDocument());
   });

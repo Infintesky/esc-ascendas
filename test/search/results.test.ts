@@ -3,8 +3,8 @@ import { mergeHotelsWithPrices, applyFilters, sortListings } from "@/lib/search/
 import type { Hotel } from "@/lib/ascenda/types";
 
 const hotels: Hotel[] = [
-  { id: "a", name: "A", latitude: 0, longitude: 0, address: "", rating: 5, description: "", amenities: [], imagePrefix: "", imageSuffix: "", imageCount: 0 },
-  { id: "b", name: "B", latitude: 0, longitude: 0, address: "", rating: 3, description: "", amenities: [], imagePrefix: "", imageSuffix: "", imageCount: 0 },
+  { id: "a", name: "A", latitude: 0, longitude: 0, address: "", rating: 5, guestRating: 90, description: "", amenities: [], imagePrefix: "", imageSuffix: "", imageCount: 0 },
+  { id: "b", name: "B", latitude: 0, longitude: 0, address: "", rating: 3, guestRating: 60, description: "", amenities: [], imagePrefix: "", imageSuffix: "", imageCount: 0 },
 ];
 const prices = [
   { id: "a", searchRank: 0.9, price: 300, marketRates: [] },
@@ -21,6 +21,12 @@ describe("results logic", () => {
     const merged = mergeHotelsWithPrices(hotels, prices);
     expect(applyFilters(merged, { minStars: 4 }).map((m) => m.id)).toEqual(["a"]);
     expect(applyFilters(merged, { maxPrice: 150 }).map((m) => m.id)).toEqual(["b"]);
+  });
+
+  it("filters by guest rating and a price range", () => {
+    const merged = mergeHotelsWithPrices(hotels, prices);
+    expect(applyFilters(merged, { minGuestRating: 80 }).map((m) => m.id)).toEqual(["a"]);
+    expect(applyFilters(merged, { minPrice: 150, maxPrice: 400 }).map((m) => m.id)).toEqual(["a"]);
   });
 
   it("sorts by price ascending", () => {

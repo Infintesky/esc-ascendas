@@ -7,6 +7,7 @@ export const HotelSchema = z.object({
   longitude: z.number(),
   address: z.string(),
   rating: z.number(),
+  guestRating: z.number().default(0),
   description: z.string().default(""),
   amenities: z.array(z.string()).default([]),
   imagePrefix: z.string().default(""),

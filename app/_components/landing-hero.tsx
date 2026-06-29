@@ -1,7 +1,6 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Plane } from "lucide-react";
 import { SearchForm } from "./search-form";
 
 const fadeUp = {
@@ -25,39 +24,25 @@ export function LandingHero() {
       </div>
 
       <div className="mx-auto flex max-w-4xl flex-col items-center px-6 pb-24 pt-20 text-center">
-        <motion.span
+        <motion.h1
           custom={0}
           variants={fadeUp}
           initial="hidden"
           animate="show"
-          className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary backdrop-blur"
+          className="text-balance text-5xl font-bold tracking-tight text-foreground sm:text-6xl"
         >
-          <Plane className="size-4" />
-          Ascenda Loyalty · points-powered travel
-        </motion.span>
-
-        <motion.h1
-          custom={1}
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="mt-6 text-balance text-5xl font-bold tracking-tight text-foreground sm:text-6xl"
-        >
-          Find your stay,{" "}
-          <span className="text-primary">
-            earn as you go
-          </span>
+          Ascenda Loyalty ·{" "}
+          <span className="text-primary">points-powered travel</span>
         </motion.h1>
 
         <motion.p
-          custom={2}
+          custom={1}
           variants={fadeUp}
           initial="hidden"
           animate="show"
           className="mt-4 max-w-xl text-pretty text-lg text-muted-foreground"
         >
-          Search millions of hotels worldwide, compare live rates, and earn loyalty
-          points on every booking.
+          Find your stay, earn as you go.
         </motion.p>
 
         <motion.div

@@ -21,6 +21,9 @@ function num(input: unknown, fallback = 0): number {
 export function mapHotel(raw: unknown): Hotel {
   const r = (raw ?? {}) as Record<string, unknown>;
   const img = (r.image_details ?? {}) as Record<string, unknown>;
+  // TrustYou guest score (0–100); separate from the supplier star `rating`.
+  const trustyou = (r.trustyou ?? {}) as Record<string, unknown>;
+  const tyScore = (trustyou.score ?? {}) as Record<string, unknown>;
   return HotelSchema.parse({
     id: String(r.id ?? ""),
     name: String(r.name ?? ""),
@@ -28,6 +31,7 @@ export function mapHotel(raw: unknown): Hotel {
     longitude: num(r.longitude),
     address: String(r.address ?? ""),
     rating: num(r.rating),
+    guestRating: num(tyScore.overall),
     description: r.description ? String(r.description) : "",
     amenities: toStringArray(r.amenities),
     imagePrefix: img.prefix ? String(img.prefix) : "",

@@ -18,6 +18,8 @@ export function mergeHotelsWithPrices(
 
 export type ResultFilters = {
   minStars?: number;
+  minGuestRating?: number;
+  minPrice?: number;
   maxPrice?: number;
 };
 
@@ -27,6 +29,8 @@ export function applyFilters(
 ): HotelListing[] {
   return listings.filter((l) => {
     if (f.minStars != null && l.rating < f.minStars) return false;
+    if (f.minGuestRating != null && l.guestRating < f.minGuestRating) return false;
+    if (f.minPrice != null && (l.price == null || l.price < f.minPrice)) return false;
     if (f.maxPrice != null && (l.price == null || l.price > f.maxPrice)) return false;
     return true;
   });

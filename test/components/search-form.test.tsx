@@ -13,14 +13,19 @@ vi.mock("@/lib/search/params", async (importOriginal) => {
 
 import { SearchForm } from "@/app/_components/search-form";
 
-/** Click an enabled day cell in the currently-open calendar popover. */
-async function pickDay(localeDate: string) {
-  const day = await waitFor(() => {
-    const el = document.querySelector(`[data-day="${localeDate}"]`);
-    if (!el) throw new Error(`day ${localeDate} not rendered`);
+/**
+ * Click an enabled day cell in the currently-open calendar popover. Selects by
+ * ISO date (the `<td data-day="yyyy-MM-dd">`) so the test is locale-independent;
+ * the sibling day grid also carries a locale-formatted `data-day` we must avoid.
+ */
+async function pickDay(isoDate: string) {
+  const cell = await waitFor(() => {
+    const el = document.querySelector(`td[data-day="${isoDate}"]`);
+    if (!el) throw new Error(`day ${isoDate} not rendered`);
     return el as HTMLElement;
   });
-  fireEvent.click(day);
+  const button = cell.querySelector("button") ?? cell;
+  fireEvent.click(button);
 }
 
 describe("SearchForm", () => {
@@ -50,8 +55,8 @@ describe("SearchForm", () => {
     // Pick the stay as a range in the shadcn Calendar popover: first click sets
     // the start, second click sets the end and closes the popover.
     fireEvent.click(screen.getByRole("button", { name: /check-in/i }));
-    await pickDay("10/15/2026");
-    await pickDay("10/20/2026");
+    await pickDay("2026-10-15");
+    await pickDay("2026-10-20");
 
     fireEvent.click(screen.getByRole("button", { name: /search/i }));
     await waitFor(() => expect(push).toHaveBeenCalled());

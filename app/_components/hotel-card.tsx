@@ -6,11 +6,17 @@ import type { HotelListing } from "@/lib/search/results";
 export function HotelCard({
   listing,
   query,
+  nights,
 }: {
   listing: HotelListing;
   query: Record<string, string>;
+  nights: number;
 }) {
   const qs = new URLSearchParams(query).toString();
+  // The supplier `price` is the total for the whole stay; show it per night so
+  // listings read like every other hotel site.
+  const perNight =
+    listing.price != null && nights > 0 ? Math.round(listing.price / nights) : null;
   return (
     <article className="mb-3 flex items-start justify-between gap-4 rounded-xl bg-card p-4 ring-1 ring-foreground/10 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/5 hover:ring-primary/30">
       <div className="min-w-0">
@@ -28,18 +34,21 @@ export function HotelCard({
         </p>
       </div>
       <div className="flex shrink-0 flex-col items-end gap-2">
-        <p className="font-semibold text-foreground">
-          {listing.price != null ? (
+        <div className="text-right">
+          {perNight != null ? (
             <>
-              <span className="text-xs font-normal text-muted-foreground">SGD </span>
-              {listing.price}
+              <p className="font-semibold text-foreground">
+                <span className="text-xs font-normal text-muted-foreground">SGD </span>
+                {perNight.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground">per night</p>
             </>
           ) : (
             <span className="text-sm font-normal text-muted-foreground">
               Loading price…
             </span>
           )}
-        </p>
+        </div>
         <Button size="lg" render={<Link href={`/hotels/${listing.id}?${qs}`} />}>
           Select
         </Button>
