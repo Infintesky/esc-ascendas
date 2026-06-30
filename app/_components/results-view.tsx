@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useHotelPrices } from "@/hooks/use-hotel-prices";
+import { useHotelPricesContext } from "./prices-provider";
 import { nightsBetween } from "@/lib/booking/nights";
 import {
   mergeHotelsWithPrices,
@@ -52,7 +52,7 @@ export function ResultsView({
   hotels: Hotel[];
   query: Record<string, string>;
 }) {
-  const { hotels: prices } = useHotelPrices(query);
+  const { hotels: prices, completed: pricesDone } = useHotelPricesContext();
   const [filters, setFilters] = useState<ResultFilters>({});
   const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
   const [sortBy, setSortBy] = useState<"price" | "rating">("price");
@@ -65,6 +65,10 @@ export function ResultsView({
 
   const listings = useMemo(() => {
     const merged = mergeHotelsWithPrices(hotels, prices);
+    // Once polling is done, hotels with no price have no availability for these
+    // dates — drop them entirely. While still loading we keep them (shown as
+    // "Loading price…") so results don't shuffle as prices stream in.
+    const available = pricesDone ? merged.filter((l) => l.price != null) : merged;
     // The filter panel works in per-night SGD; convert to the stay total the
     // listings are priced in before filtering.
     const stayFilters: ResultFilters = {
@@ -72,17 +76,27 @@ export function ResultsView({
       minPrice: filters.minPrice != null ? filters.minPrice * nights : undefined,
       maxPrice: filters.maxPrice != null ? filters.maxPrice * nights : undefined,
     };
-    return sortListings(applyFilters(merged, stayFilters), sortBy, "asc");
-  }, [hotels, prices, filters, sortBy, nights]);
+    return sortListings(applyFilters(available, stayFilters), sortBy, "asc");
+  }, [hotels, prices, filters, sortBy, nights, pricesDone]);
 
-  // Keep the current page valid as filters/data change.
+  // Heading count: total hotels while loading, then how many have availability
+  // for these dates — independent of the user's star/price filters.
+  const availableCount = pricesDone
+    ? prices.filter((p) => p.price != null).length
+    : hotels.length;
+
+  // Keep the current page valid as filters/data change: clamp during render
+  // rather than via an effect so there's no extra render pass.
   const pageCount = Math.max(1, Math.ceil(listings.length / PAGE_SIZE));
-  useEffect(() => {
-    if (page > pageCount - 1) setPage(0);
-  }, [page, pageCount]);
+  const safePage = Math.min(page, pageCount - 1);
 
-  const start = page * PAGE_SIZE;
+  const start = safePage * PAGE_SIZE;
   const pageItems = listings.slice(start, start + PAGE_SIZE);
+
+  function goToPage(next: number) {
+    setPage(next);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
   function commitPriceRange([lo, hi]: [number, number]) {
     setFilters((f) => ({
@@ -95,6 +109,11 @@ export function ResultsView({
 
   return (
     <div>
+      <h1 className="mb-6 text-2xl font-bold tracking-tight text-foreground">
+        <span className="text-primary">{availableCount}</span> hotels{" "}
+        {pricesDone ? "available" : "found"}
+      </h1>
+
       <div className="mb-5 flex flex-wrap items-end gap-6 rounded-xl bg-card/80 p-4 ring-1 ring-foreground/10 backdrop-blur">
         <div className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
           Min stars
@@ -193,21 +212,21 @@ export function ResultsView({
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page === 0}
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
+                disabled={safePage === 0}
+                onClick={() => goToPage(Math.max(0, safePage - 1))}
                 className="gap-1"
               >
                 <ChevronLeft className="size-4" />
                 Prev
               </Button>
               <span className="text-sm font-medium text-foreground">
-                {page + 1} / {pageCount}
+                {safePage + 1} / {pageCount}
               </span>
               <Button
                 variant="outline"
                 size="sm"
-                disabled={page >= pageCount - 1}
-                onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+                disabled={safePage >= pageCount - 1}
+                onClick={() => goToPage(Math.min(pageCount - 1, safePage + 1))}
                 className="gap-1"
               >
                 Next

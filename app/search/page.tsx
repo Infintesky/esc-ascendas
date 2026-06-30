@@ -4,6 +4,7 @@ import { mapHotel } from "@/lib/ascenda/mappers";
 import { ResultsView } from "@/app/_components/results-view";
 import { ResultsSkeleton } from "@/app/_components/skeletons";
 import { SiteShell } from "@/app/_components/site-shell";
+import { PricesProvider } from "@/app/_components/prices-provider";
 
 // Slow part: the static-hotel fetch can take several seconds upstream. It lives
 // in its own async component so the page shell + skeleton flush immediately and
@@ -21,17 +22,7 @@ async function SearchResults({
   );
   const hotels = (Array.isArray(raw) ? raw : []).map(mapHotel);
 
-  return (
-    <>
-      <h1 className="mb-6 text-2xl font-bold tracking-tight text-foreground">
-        <span className="text-primary">
-          {hotels.length}
-        </span>{" "}
-        hotels found
-      </h1>
-      <ResultsView hotels={hotels} query={query} />
-    </>
-  );
+  return <ResultsView hotels={hotels} query={query} />;
 }
 
 export default async function SearchPage({
@@ -56,9 +47,11 @@ export default async function SearchPage({
 
   return (
     <SiteShell width="md">
-      <Suspense fallback={<ResultsSkeleton />}>
-        <SearchResults destinationId={destinationId} query={query} />
-      </Suspense>
+      <PricesProvider query={query}>
+        <Suspense fallback={<ResultsSkeleton />}>
+          <SearchResults destinationId={destinationId} query={query} />
+        </Suspense>
+      </PricesProvider>
     </SiteShell>
   );
 }

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { ASCENDA_BASE_URL, ascendaGet } from "@/lib/ascenda/client";
 import { mapHotel, hotelImageUrls } from "@/lib/ascenda/mappers";
 import { RoomList } from "@/app/_components/room-list";
+import { HotelImage } from "@/app/_components/hotel-image";
 import { HotelDetailSkeleton } from "@/app/_components/skeletons";
 import { SiteShell } from "@/app/_components/site-shell";
 import { Star } from "lucide-react";
@@ -31,14 +32,11 @@ async function HotelDetail({
           <Star key={i} className="size-4 fill-current" />
         ))}
       </p>
-      {images[0] && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={images[0]}
-          alt={hotel.name}
-          className="my-6 aspect-video w-full rounded-2xl object-cover ring-1 ring-foreground/10"
-        />
-      )}
+      <HotelImage
+        candidates={images}
+        alt={hotel.name}
+        className="my-6 aspect-video w-full rounded-2xl object-cover ring-1 ring-foreground/10"
+      />
       {hotel.description && (
         <div
           className="prose prose-sm max-w-none text-foreground/90"
