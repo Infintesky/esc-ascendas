@@ -102,7 +102,13 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY      # public, browser-safe
 SUPABASE_SERVICE_ROLE_KEY          # server-only, never prefix with NEXT_PUBLIC_
 STRIPE_SECRET_KEY                  # server-only
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY # public, browser-safe
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY    # public, browser-safe — Maps Embed API (hotel location map)
 ```
+
+> The hotel detail page (`/hotels/[id]`) renders a Google Maps embed of the
+> hotel's coordinates. Enable the **Maps Embed API** for the key in Google Cloud
+> and add an HTTP-referrer restriction (it is browser-exposed). Without a key the
+> map gracefully falls back to a key-free OpenStreetMap embed.
 
 Browser-exposed variables **must** use the `NEXT_PUBLIC_` prefix (Next.js
 convention). Secrets (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,

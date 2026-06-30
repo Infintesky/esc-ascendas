@@ -4,7 +4,8 @@ const create = vi.fn(async () => ({
   id: "pi_123",
   status: "succeeded",
   client_secret: "cs_123",
-  charges: { data: [{ payment_method_details: { card: { last4: "4242", brand: "visa" } } }] },
+  // Modern Stripe API: the charge is exposed via the expanded `latest_charge`.
+  latest_charge: { payment_method_details: { card: { last4: "4242", brand: "visa" } } },
 }));
 
 vi.mock("@/lib/stripe/server", () => ({

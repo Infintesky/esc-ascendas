@@ -4,6 +4,17 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
+// Supabase browser client is mocked; the test uses the reserved demo email which
+// skips OTP entirely, so these are not exercised — stubbed for safety.
+vi.mock("@/lib/auth/supabase-browser", () => ({
+  createBrowserSupabase: () => ({
+    auth: {
+      signInWithOtp: vi.fn(async () => ({ error: null })),
+      verifyOtp: vi.fn(async () => ({ error: null })),
+    },
+  }),
+}));
+
 // Stripe hooks/components are mocked: CardElement renders a marker, createPaymentMethod returns a token.
 const createPaymentMethod = vi.fn(async () => ({ paymentMethod: { id: "pm_test_xyz" } }));
 vi.mock("@stripe/react-stripe-js", () => ({
@@ -40,18 +51,26 @@ describe("BookingForm", () => {
     render(<BookingForm prefill={prefill} />);
     fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: "Ada" } });
     fireEvent.change(screen.getByLabelText(/last name/i), { target: { value: "Lovelace" } });
-    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "ada@example.com" } });
+    // Reserved demo email skips OTP; clicking Verify marks the email verified.
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: "demo@ascenda.test" } });
+    fireEvent.click(screen.getByRole("button", { name: /^verify$/i }));
+    await screen.findByText(/verified/i);
     fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: "+6512345678" } });
     fireEvent.change(screen.getByLabelText(/address/i), { target: { value: "1 Road" } });
     fireEvent.change(screen.getByLabelText(/city/i), { target: { value: "Singapore" } });
     fireEvent.change(screen.getByLabelText(/postal/i), { target: { value: "123456" } });
-    fireEvent.change(screen.getByLabelText(/country/i), { target: { value: "SG" } });
+    // Open the country dropdown and pick Singapore.
+    fireEvent.click(screen.getByLabelText(/country/i));
+    fireEvent.click(await screen.findByRole("option", { name: "Singapore" }));
+
     fireEvent.click(screen.getByRole("button", { name: /pay/i }));
 
     await waitFor(() => expect(createPaymentMethod).toHaveBeenCalled());
     await waitFor(() => expect(push).toHaveBeenCalledWith("/book/confirmation/BK-20261001-ABC123"));
     const body = JSON.parse((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
     expect(body.paymentMethodId).toBe("pm_test_xyz");
+    expect(body.phone).toBe("6512345678"); // non-digits stripped
+    expect(body.billingAddress.country).toBe("SG");
     expect(body).not.toHaveProperty("cardNumber");
   });
 });

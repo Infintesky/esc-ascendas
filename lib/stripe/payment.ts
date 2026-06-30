@@ -18,10 +18,15 @@ export async function confirmCardPayment(args: {
     payment_method: args.paymentMethodId,
     confirm: true,
     automatic_payment_methods: { enabled: true, allow_redirects: "never" },
+    // Modern Stripe API versions no longer inline `charges`; expand the latest
+    // charge so we can read the card's last4/brand for the confirmation page.
+    expand: ["latest_charge"],
   });
+  const latestCharge = intent.latest_charge;
   const card =
-    (intent as { charges?: { data?: Array<{ payment_method_details?: { card?: { last4?: string; brand?: string } } }> } })
-      .charges?.data?.[0]?.payment_method_details?.card ?? null;
+    typeof latestCharge === "object" && latestCharge
+      ? latestCharge.payment_method_details?.card ?? null
+      : null;
   return {
     status: intent.status,
     paymentIntentId: intent.id,

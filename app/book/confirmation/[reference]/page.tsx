@@ -22,6 +22,11 @@ export type BookingSummaryData = {
   status: string;
   cardLast4: string | null;
   cardBrand: string | null;
+  guestName: string;
+  guestEmail: string;
+  guestPhone: string;
+  messageToHotel: string | null;
+  billingAddress: string | null;
 };
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -45,6 +50,15 @@ export function BookingSummary({ booking }: { booking: BookingSummaryData }) {
         <Row label="Room" value={booking.roomType} />
         <Row label="Stay" value={`${booking.checkin} → ${booking.checkout} (${booking.nights} nights)`} />
         <Row label="Guests" value={`${booking.adults} adults, ${booking.children} children`} />
+        <Row label="Booked by" value={booking.guestName} />
+        <Row label="Email" value={booking.guestEmail} />
+        <Row label="Phone" value={booking.guestPhone} />
+        {booking.messageToHotel && (
+          <Row label="Special requests" value={booking.messageToHotel} />
+        )}
+        {booking.billingAddress && (
+          <Row label="Billing address" value={booking.billingAddress} />
+        )}
         <Row label="Total paid" value={`${booking.currency} ${booking.price}`} />
         {booking.cardLast4 && (
           <Row label="Paid with" value={`${booking.cardBrand ?? "card"} •••• ${booking.cardLast4}`} />
@@ -83,6 +97,12 @@ export default async function ConfirmationPage({
           roomType: b.roomType, checkin: b.checkin, checkout: b.checkout, nights: b.nights,
           adults: b.adults, children: b.children, price: b.price, currency: b.currency,
           status: b.status, cardLast4: b.cardLast4, cardBrand: b.cardBrand,
+          guestName: `${b.guestSalutation ? `${b.guestSalutation} ` : ""}${b.guestFirstName} ${b.guestLastName}`.trim(),
+          guestEmail: b.guestEmail, guestPhone: b.guestPhone,
+          messageToHotel: b.messageToHotel,
+          billingAddress: [b.billingLine1, b.billingCity, b.billingPostalCode, b.billingCountry]
+            .filter(Boolean)
+            .join(", ") || null,
         }}
       />
       <Link href="/" className="mt-6 inline-block text-sm font-medium text-primary hover:underline">

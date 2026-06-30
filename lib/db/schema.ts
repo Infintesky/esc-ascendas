@@ -39,6 +39,18 @@ export const bookings = pgTable("bookings", {
   children: integer("children").notNull().default(0),
   roomType: text("room_type").notNull(),
   messageToHotel: text("message_to_hotel"),
+  // Guest contact details captured at booking time — persisted on the booking
+  // itself so guest/anonymous bookings (user_id null) still carry who to contact.
+  guestSalutation: text("guest_salutation"),
+  guestFirstName: text("guest_first_name").notNull(),
+  guestLastName: text("guest_last_name").notNull(),
+  guestEmail: text("guest_email").notNull(),
+  guestPhone: text("guest_phone").notNull(),
+  // Billing address.
+  billingLine1: text("billing_line1"),
+  billingCity: text("billing_city"),
+  billingPostalCode: text("billing_postal_code"),
+  billingCountry: text("billing_country"),
   price: numeric("price").notNull(),
   currency: text("currency").notNull(),
   status: bookingStatus("status").notNull().default("pending"),

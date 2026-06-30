@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Room } from "@/lib/ascenda/types";
+import { nightsBetween } from "@/lib/booking/nights";
 import { FadeItem } from "./motion-primitives";
+import { HotelImage } from "./hotel-image";
+import { AmenityList } from "./amenity-list";
 
 export function RoomList({
   hotelId,
@@ -20,19 +23,45 @@ export function RoomList({
   const [loading, setLoading] = useState(true);
   const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
   const qs = new URLSearchParams(query).toString();
+  // Match the search page, which prices per night; the supplier `price` is the
+  // whole-stay total, so divide by nights for the headline figure.
+  const nights = Math.max(1, nightsBetween(query.checkin ?? "", query.checkout ?? ""));
 
+  // The per-hotel rates endpoint warms up just like the bulk one: the first
+  // responses come back with `completed: false` and no rooms yet. Polling until
+  // it completes avoids the "No rooms available" flash on a hotel that does in
+  // fact have rooms — the main source of click-in friction.
   useEffect(() => {
     let active = true;
+    let polls = 0;
+    const FAST_INTERVAL_MS = 600;
+    const SLOW_INTERVAL_MS = 2000;
+    const FAST_POLLS = 8;
+    const MAX_POLLS = 26;
     setLoading(true);
-    fetch(`/api/hotels/${hotelId}/prices?${qs}`)
-      .then((r) => r.json())
-      .then((data: { rooms: Room[] }) => {
+    setRooms([]);
+    setConfirmedAt(null);
+
+    async function poll() {
+      if (!active) return;
+      try {
+        const res = await fetch(`/api/hotels/${hotelId}/prices?${qs}`);
+        const data: { completed?: boolean; rooms?: Room[] } = await res.json();
         if (!active) return;
-        setRooms(data.rooms ?? []);
-        setConfirmedAt(new Date().toLocaleTimeString());
-        setLoading(false);
-      })
-      .catch(() => active && setLoading(false));
+        if (data.rooms?.length) setRooms(data.rooms);
+        polls += 1;
+        if (data.completed || polls >= MAX_POLLS) {
+          setRooms(data.rooms ?? []);
+          setConfirmedAt(new Date().toLocaleTimeString());
+          setLoading(false);
+        } else {
+          setTimeout(poll, polls < FAST_POLLS ? FAST_INTERVAL_MS : SLOW_INTERVAL_MS);
+        }
+      } catch {
+        if (active) setLoading(false);
+      }
+    }
+    poll();
     return () => {
       active = false;
     };
@@ -57,32 +86,62 @@ export function RoomList({
       <div className="space-y-3">
         {rooms.map((room, i) => (
           <FadeItem key={room.key} index={Math.min(i, 8)}>
-            <Card className="transition-all hover:ring-primary/30">
-              <CardContent className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-foreground">{room.roomType}</h3>
-                  {room.freeCancellation && (
-                    <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                      <CheckCircle2 className="size-3.5" />
-                      Free cancellation
-                    </span>
+            <Card className="overflow-hidden transition-all hover:ring-primary/30">
+              <CardContent className="flex flex-col gap-4 sm:flex-row">
+                {room.images.length > 0 && (
+                  <HotelImage
+                    candidates={room.images}
+                    alt={room.roomType}
+                    fallback="none"
+                    className="aspect-video w-full shrink-0 rounded-xl object-cover ring-1 ring-foreground/10 sm:w-48"
+                  />
+                )}
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-foreground">{room.roomType}</h3>
+                      {room.freeCancellation && (
+                        <span className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="size-3.5" />
+                          Free cancellation
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      <div className="text-right">
+                        <p className="font-semibold text-foreground">
+                          <span className="text-xs font-normal text-muted-foreground">SGD </span>
+                          {Math.round(room.price / nights)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">per night</p>
+                        <p className="text-xs text-muted-foreground">
+                          SGD {room.price} total · {nights} {nights === 1 ? "night" : "nights"}
+                        </p>
+                      </div>
+                      <Button
+                        size="lg"
+                        render={
+                          <Link
+                            href={`/book?hotel_id=${hotelId}&room_key=${encodeURIComponent(room.key)}&room_type=${encodeURIComponent(room.roomType)}&price=${room.price}&${qs}`}
+                          />
+                        }
+                      >
+                        Select room
+                      </Button>
+                    </div>
+                  </div>
+                  {(room.longDescription || room.description) && (
+                    <div
+                      className="prose prose-sm max-w-none text-sm text-foreground/80 [&_*]:!text-foreground/80"
+                      dangerouslySetInnerHTML={{
+                        __html: room.longDescription || room.description,
+                      }}
+                    />
                   )}
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-2">
-                  <p className="font-semibold text-foreground">
-                    <span className="text-xs font-normal text-muted-foreground">SGD </span>
-                    {room.price}
-                  </p>
-                  <Button
-                    size="lg"
-                    render={
-                      <Link
-                        href={`/book?hotel_id=${hotelId}&room_key=${encodeURIComponent(room.key)}&room_type=${encodeURIComponent(room.roomType)}&price=${room.price}&${qs}`}
-                      />
-                    }
-                  >
-                    Select room
-                  </Button>
+                  <AmenityList
+                    amenities={room.amenities}
+                    className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1.5 sm:grid-cols-3"
+                  />
                 </div>
               </CardContent>
             </Card>

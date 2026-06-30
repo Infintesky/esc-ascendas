@@ -66,10 +66,11 @@ export function ResultsView({
 
   const listings = useMemo(() => {
     const merged = mergeHotelsWithPrices(hotels, prices);
-    // Once polling is done, hotels with no price have no availability for these
-    // dates — drop them entirely. While still loading we keep them (shown as
-    // "Loading price…") so results don't shuffle as prices stream in.
-    const available = pricesDone ? merged.filter((l) => l.price != null) : merged;
+    // Only ever show hotels that have a price — a price means the supplier has
+    // bookable rooms for these dates. Most of the static list has no availability,
+    // and showing those just leads to dead-end "no rooms" clicks. Prices stream
+    // in as polling progresses, so the list grows progressively.
+    const available = merged.filter((l) => l.price != null);
     // The filter panel works in per-night SGD; convert to the stay total the
     // listings are priced in before filtering.
     const stayFilters: ResultFilters = {
@@ -78,13 +79,11 @@ export function ResultsView({
       maxPrice: filters.maxPrice != null ? filters.maxPrice * nights : undefined,
     };
     return sortListings(applyFilters(available, stayFilters), sortBy, "asc");
-  }, [hotels, prices, filters, sortBy, nights, pricesDone]);
+  }, [hotels, prices, filters, sortBy, nights]);
 
-  // Heading count: total hotels while loading, then how many have availability
-  // for these dates — independent of the user's star/price filters.
-  const availableCount = pricesDone
-    ? prices.filter((p) => p.price != null).length
-    : hotels.length;
+  // Heading count: how many hotels have availability for these dates so far —
+  // independent of the user's star/price filters. Grows as prices stream in.
+  const availableCount = prices.filter((p) => p.price != null).length;
 
   // Keep the current page valid as filters/data change: clamp during render
   // rather than via an effect so there's no extra render pass.
@@ -125,8 +124,12 @@ export function ResultsView({
   return (
     <div>
       <h1 className="mb-6 text-2xl font-bold tracking-tight text-foreground">
-        <span className="text-primary">{availableCount}</span> hotels{" "}
-        {pricesDone ? "available" : "found"}
+        <span className="text-primary">{availableCount}</span> hotels available
+        {!pricesDone && (
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
+            searching…
+          </span>
+        )}
       </h1>
 
       <Card className="mb-5 bg-card/80 backdrop-blur">
@@ -224,7 +227,11 @@ export function ResultsView({
       {listings.length === 0 ? (
         <Card className="bg-card/80">
           <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            No hotels match your filters.
+            {!pricesDone
+              ? "Finding available hotels for your dates…"
+              : filtersActive
+                ? "No hotels match your filters."
+                : "No hotels are available for these dates."}
           </CardContent>
         </Card>
       ) : (
