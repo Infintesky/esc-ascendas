@@ -7,10 +7,12 @@ import { PaymentFields } from "./payment-fields";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
 
 type Prefill = Record<string, string>;
 
-const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
+const labelClass = "mb-1.5";
 
 export function BookingForm({ prefill }: { prefill: Prefill }) {
   const router = useRouter();
@@ -77,27 +79,26 @@ export function BookingForm({ prefill }: { prefill: Prefill }) {
     prefill.price ? `${prefill.currency ?? "SGD"} ${prefill.price}` : null;
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-6 rounded-2xl bg-card/90 p-6 ring-1 ring-foreground/10 shadow-xl shadow-primary/5 backdrop-blur"
-    >
+    <Card className="bg-card/90 shadow-xl shadow-primary/5 backdrop-blur [--card-spacing:--spacing(6)]">
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-6">
       <fieldset className="space-y-4">
         <legend className="mb-2 text-sm font-semibold text-foreground">Guest details</legend>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
-            <label className={labelClass} htmlFor="firstName">First name</label>
+            <Label className={labelClass} htmlFor="firstName">First name</Label>
             <Input id="firstName" aria-label="First name" className="h-11" value={form.firstName} onChange={(e) => set("firstName", e.target.value)} required />
           </div>
           <div>
-            <label className={labelClass} htmlFor="lastName">Last name</label>
+            <Label className={labelClass} htmlFor="lastName">Last name</Label>
             <Input id="lastName" aria-label="Last name" className="h-11" value={form.lastName} onChange={(e) => set("lastName", e.target.value)} required />
           </div>
           <div>
-            <label className={labelClass} htmlFor="email">Email</label>
+            <Label className={labelClass} htmlFor="email">Email</Label>
             <Input id="email" aria-label="Email" type="email" className="h-11" value={form.email} onChange={(e) => set("email", e.target.value)} required />
           </div>
           <div>
-            <label className={labelClass} htmlFor="phone">Phone</label>
+            <Label className={labelClass} htmlFor="phone">Phone</Label>
             <Input id="phone" aria-label="Phone" className="h-11" value={form.phone} onChange={(e) => set("phone", e.target.value)} required />
           </div>
         </div>
@@ -107,26 +108,26 @@ export function BookingForm({ prefill }: { prefill: Prefill }) {
         <legend className="mb-2 text-sm font-semibold text-foreground">Billing address</legend>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <label className={labelClass} htmlFor="line1">Address</label>
+            <Label className={labelClass} htmlFor="line1">Address</Label>
             <Input id="line1" aria-label="Address" className="h-11" value={form.line1} onChange={(e) => set("line1", e.target.value)} required />
           </div>
           <div>
-            <label className={labelClass} htmlFor="city">City</label>
+            <Label className={labelClass} htmlFor="city">City</Label>
             <Input id="city" aria-label="City" className="h-11" value={form.city} onChange={(e) => set("city", e.target.value)} required />
           </div>
           <div>
-            <label className={labelClass} htmlFor="postalCode">Postal code</label>
+            <Label className={labelClass} htmlFor="postalCode">Postal code</Label>
             <Input id="postalCode" aria-label="Postal code" className="h-11" value={form.postalCode} onChange={(e) => set("postalCode", e.target.value)} required />
           </div>
           <div>
-            <label className={labelClass} htmlFor="country">Country</label>
+            <Label className={labelClass} htmlFor="country">Country</Label>
             <Input id="country" aria-label="Country" className="h-11" value={form.country} onChange={(e) => set("country", e.target.value)} required />
           </div>
         </div>
       </fieldset>
 
       <div>
-        <label className={labelClass} htmlFor="messageToHotel">Message to hotel</label>
+        <Label className={labelClass} htmlFor="messageToHotel">Message to hotel</Label>
         <Textarea id="messageToHotel" aria-label="Message to hotel" rows={3} value={form.messageToHotel} onChange={(e) => set("messageToHotel", e.target.value)} />
       </div>
 
@@ -141,6 +142,8 @@ export function BookingForm({ prefill }: { prefill: Prefill }) {
       <Button type="submit" size="lg" disabled={submitting} className="h-11 w-full text-sm font-semibold">
         {submitting ? "Processing…" : priceLabel ? `Pay ${priceLabel} & book` : "Pay & book"}
       </Button>
-    </form>
+        </form>
+      </CardContent>
+    </Card>
   );
 }

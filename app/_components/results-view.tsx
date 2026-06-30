@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useHotelPricesContext } from "./prices-provider";
 import { nightsBetween } from "@/lib/booking/nights";
 import {
@@ -14,6 +14,7 @@ import type { Hotel } from "@/lib/ascenda/types";
 import { HotelCard } from "./hotel-card";
 import { FadeItem } from "./motion-primitives";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import {
   Select,
@@ -98,6 +99,20 @@ export function ResultsView({
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  const filtersActive =
+    filters.minStars != null ||
+    filters.minGuestRating != null ||
+    filters.minPrice != null ||
+    filters.maxPrice != null ||
+    sortBy !== "price";
+
+  function clearFilters() {
+    setFilters({});
+    setPriceRange([PRICE_MIN, PRICE_MAX]);
+    setSortBy("price");
+    setPage(0);
+  }
+
   function commitPriceRange([lo, hi]: [number, number]) {
     setFilters((f) => ({
       ...f,
@@ -114,7 +129,8 @@ export function ResultsView({
         {pricesDone ? "available" : "found"}
       </h1>
 
-      <div className="mb-5 flex flex-wrap items-end gap-6 rounded-xl bg-card/80 p-4 ring-1 ring-foreground/10 backdrop-blur">
+      <Card className="mb-5 bg-card/80 backdrop-blur">
+        <CardContent className="flex flex-wrap items-end gap-6">
         <div className="flex flex-col gap-1.5 text-sm font-medium text-foreground">
           Min stars
           <Select
@@ -169,8 +185,10 @@ export function ResultsView({
               max={PRICE_MAX}
               step={50}
               value={priceRange}
-              onValueChange={(v) => setPriceRange(v as [number, number])}
-              onValueCommitted={(v) => commitPriceRange(v as [number, number])}
+              onValueChange={(v) => {
+                setPriceRange(v as [number, number]);
+                commitPriceRange(v as [number, number]);
+              }}
               className="w-full"
             />
           </div>
@@ -188,12 +206,27 @@ export function ResultsView({
             </SelectContent>
           </Select>
         </div>
-      </div>
+
+        {filtersActive && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearFilters}
+            className="h-9 gap-1 text-muted-foreground hover:text-foreground"
+          >
+            <X className="size-4" />
+            Clear filters
+          </Button>
+        )}
+        </CardContent>
+      </Card>
 
       {listings.length === 0 ? (
-        <p className="rounded-xl bg-card/80 p-8 text-center text-sm text-muted-foreground ring-1 ring-foreground/10">
-          No hotels match your filters.
-        </p>
+        <Card className="bg-card/80">
+          <CardContent className="p-8 text-center text-sm text-muted-foreground">
+            No hotels match your filters.
+          </CardContent>
+        </Card>
       ) : (
         <>
           <div>

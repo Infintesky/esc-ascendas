@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { SiteShell } from "@/app/_components/site-shell";
 import { PointsChart, type PointsHistoryItem } from "@/app/_components/points-chart";
 import { DeleteAccountButton } from "@/app/_components/delete-account-button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function AccountPage() {
   const [balance, setBalance] = useState<number | null>(null);
@@ -38,10 +39,14 @@ export default function AccountPage() {
         <strong className="text-primary">{balance ?? "…"}</strong>
       </p>
 
-      <div className="rounded-xl bg-card/80 p-5 ring-1 ring-foreground/10 backdrop-blur">
-        <h2 className="mb-3 font-medium text-foreground">Points history</h2>
-        <PointsChart history={history} />
-      </div>
+      <Card className="bg-card/80 backdrop-blur [--card-spacing:--spacing(5)]">
+        <CardHeader>
+          <CardTitle className="font-medium">Points history</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PointsChart history={history} />
+        </CardContent>
+      </Card>
 
       <div className="mt-8 border-t border-border/50 pt-5">
         <p className="mb-2 text-sm font-medium text-foreground">Danger zone</p>

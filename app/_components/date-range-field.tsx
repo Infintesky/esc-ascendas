@@ -7,6 +7,7 @@ import { CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Label } from "@/components/ui/label";
 
 /**
  * A shadcn range Calendar (mode="range") in a Popover. Picks check-in → check-out
@@ -40,7 +41,7 @@ export function DateRangeField({
 
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-medium text-foreground">{label}</label>
+      <Label className="mb-1.5">{label}</Label>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           render={

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type MiniSearch from "minisearch";
 import { MapPin } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { buildIndex, searchDestinations } from "@/lib/search/fuzzy";
 import type { DestinationEntry } from "@/lib/search/destination";
 
@@ -65,9 +66,7 @@ export function DestinationAutocomplete({
 
   return (
     <div ref={containerRef} className="relative">
-      <label className="mb-1.5 block text-sm font-medium text-foreground">
-        Destination
-      </label>
+      <Label className="mb-1.5">Destination</Label>
       <div className="relative">
         <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input

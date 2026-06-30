@@ -4,6 +4,8 @@ import { CheckCircle2 } from "lucide-react";
 import { db } from "@/lib/db/client";
 import { bookings } from "@/lib/db/schema";
 import { SiteShell } from "@/app/_components/site-shell";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 
 export type BookingSummaryData = {
   reference: string;
@@ -33,20 +35,22 @@ function Row({ label, value }: { label: string; value: string }) {
 
 export function BookingSummary({ booking }: { booking: BookingSummaryData }) {
   return (
-    <section className="rounded-2xl bg-card/90 p-6 ring-1 ring-foreground/10 shadow-xl shadow-primary/5 backdrop-blur">
-      <p className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold capitalize text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-        <CheckCircle2 className="size-4" />
-        Booking {booking.status}
-      </p>
-      <Row label="Reference" value={booking.reference} />
-      <Row label="Room" value={booking.roomType} />
-      <Row label="Stay" value={`${booking.checkin} → ${booking.checkout} (${booking.nights} nights)`} />
-      <Row label="Guests" value={`${booking.adults} adults, ${booking.children} children`} />
-      <Row label="Total paid" value={`${booking.currency} ${booking.price}`} />
-      {booking.cardLast4 && (
-        <Row label="Paid with" value={`${booking.cardBrand ?? "card"} •••• ${booking.cardLast4}`} />
-      )}
-    </section>
+    <Card className="bg-card/90 shadow-xl shadow-primary/5 backdrop-blur [--card-spacing:--spacing(6)]">
+      <CardContent>
+        <Badge variant="secondary" className="mb-4 h-auto py-1 text-sm font-semibold capitalize text-emerald-700 dark:text-emerald-400">
+          <CheckCircle2 className="size-4" />
+          Booking {booking.status}
+        </Badge>
+        <Row label="Reference" value={booking.reference} />
+        <Row label="Room" value={booking.roomType} />
+        <Row label="Stay" value={`${booking.checkin} → ${booking.checkout} (${booking.nights} nights)`} />
+        <Row label="Guests" value={`${booking.adults} adults, ${booking.children} children`} />
+        <Row label="Total paid" value={`${booking.currency} ${booking.price}`} />
+        {booking.cardLast4 && (
+          <Row label="Paid with" value={`${booking.cardBrand ?? "card"} •••• ${booking.cardLast4}`} />
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

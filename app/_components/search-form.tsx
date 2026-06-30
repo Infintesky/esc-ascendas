@@ -7,6 +7,7 @@ import { DestinationAutocomplete } from "./destination-autocomplete";
 import { DateRangeField } from "./date-range-field";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   validateDates,
   minCheckinDate,
@@ -16,7 +17,7 @@ import {
 } from "@/lib/search/params";
 import type { DestinationEntry } from "@/lib/search/destination";
 
-const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
+const labelClass = "mb-1.5";
 
 export function SearchForm() {
   const router = useRouter();
@@ -81,7 +82,7 @@ export function SearchForm() {
           />
         </div>
         <div>
-          <label className={labelClass}>Rooms</label>
+          <Label className={labelClass}>Rooms</Label>
           <Input
             type="number"
             aria-label="Rooms"
@@ -93,7 +94,7 @@ export function SearchForm() {
           />
         </div>
         <div>
-          <label className={labelClass}>Guests per room</label>
+          <Label className={labelClass}>Guests per room</Label>
           <Input
             type="number"
             aria-label="Guests"

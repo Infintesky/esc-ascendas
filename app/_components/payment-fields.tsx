@@ -1,13 +1,12 @@
 "use client";
 
 import { CardElement } from "@stripe/react-stripe-js";
+import { Label } from "@/components/ui/label";
 
 export function PaymentFields() {
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-medium text-foreground">
-        Card details
-      </label>
+      <Label className="mb-1.5">Card details</Label>
       <div className="rounded-md border border-input bg-background px-3 py-3 shadow-sm">
         <CardElement options={{ style: { base: { fontSize: "14px" } } }} />
       </div>
