@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { DestinationAutocomplete } from "./destination-autocomplete";
 import { DateRangeField } from "./date-range-field";
+import { GuestSelector } from "./guest-selector";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,6 @@ import {
   minCheckinDate,
   clampInt,
   MAX_ROOMS,
-  MAX_GUESTS_PER_ROOM,
 } from "@/lib/search/params";
 import type { DestinationEntry } from "@/lib/search/destination";
 
@@ -27,7 +27,8 @@ export function SearchForm() {
   const [checkin, setCheckin] = useState("");
   const [checkout, setCheckout] = useState("");
   const [rooms, setRooms] = useState(1);
-  const [guests, setGuests] = useState(2);
+  const [adults, setAdults] = useState(2);
+  const [children, setChildren] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const minCheckin = useMemo(() => minCheckinDate(), []);
@@ -49,7 +50,8 @@ export function SearchForm() {
       checkin,
       checkout,
       rooms: String(rooms),
-      guests: String(guests),
+      // Upstream takes a single occupancy count per room; adults + children.
+      guests: String(adults + children),
       currency: "SGD",
       country_code: "SG",
       lang: "en_US",
@@ -93,18 +95,14 @@ export function SearchForm() {
             className="h-11"
           />
         </div>
-        <div>
-          <Label className={labelClass}>Guests per room</Label>
-          <Input
-            type="number"
-            aria-label="Guests"
-            min={1}
-            max={MAX_GUESTS_PER_ROOM}
-            value={guests}
-            onChange={(e) => setGuests(clampInt(Number(e.target.value), 1, MAX_GUESTS_PER_ROOM))}
-            className="h-11"
-          />
-        </div>
+        <GuestSelector
+          adults={adults}
+          childCount={children}
+          onChange={({ adults, childCount }) => {
+            setAdults(adults);
+            setChildren(childCount);
+          }}
+        />
       </div>
 
       {error && (
