@@ -17,12 +17,15 @@ export function HotelMap({
   if (!latitude || !longitude) return null;
 
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const coord = `${latitude},${longitude}`;
+  // Google Maps resolves the pin by place name, which drops a labelled marker on
+  // the actual hotel rather than a bare coordinate. Include the address to
+  // disambiguate same-named properties across cities.
+  const query = [name, address].filter(Boolean).join(", ");
 
   let src: string;
   if (key) {
     src = `https://www.google.com/maps/embed/v1/place?key=${key}&q=${encodeURIComponent(
-      coord,
+      query,
     )}&zoom=15`;
   } else {
     const d = 0.01;
@@ -32,7 +35,7 @@ export function HotelMap({
     src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latitude}%2C${longitude}`;
   }
 
-  const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(coord)}`;
+  const link = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 
   return (
     <section className="border-t border-foreground/10 py-8">
