@@ -1,16 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BadgeCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import type { Room } from "@/lib/ascenda/types";
 import { nightsBetween } from "@/lib/booking/nights";
 import { FadeItem } from "./motion-primitives";
 import { HotelImage } from "./hotel-image";
 import { AmenityList } from "./amenity-list";
+import { useRoomsContext } from "./rooms-provider";
 
 export function RoomList({
   hotelId,
@@ -19,53 +18,11 @@ export function RoomList({
   hotelId: string;
   query: Record<string, string>;
 }) {
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [confirmedAt, setConfirmedAt] = useState<string | null>(null);
+  const { rooms, loading, confirmedAt } = useRoomsContext();
   const qs = new URLSearchParams(query).toString();
   // Match the search page, which prices per night; the supplier `price` is the
   // whole-stay total, so divide by nights for the headline figure.
   const nights = Math.max(1, nightsBetween(query.checkin ?? "", query.checkout ?? ""));
-
-  // The per-hotel rates endpoint warms up just like the bulk one: the first
-  // responses come back with `completed: false` and no rooms yet. Polling until
-  // it completes avoids the "No rooms available" flash on a hotel that does in
-  // fact have rooms — the main source of click-in friction.
-  useEffect(() => {
-    let active = true;
-    let polls = 0;
-    const FAST_INTERVAL_MS = 600;
-    const SLOW_INTERVAL_MS = 2000;
-    const FAST_POLLS = 8;
-    const MAX_POLLS = 26;
-    setLoading(true);
-    setRooms([]);
-    setConfirmedAt(null);
-
-    async function poll() {
-      if (!active) return;
-      try {
-        const res = await fetch(`/api/hotels/${hotelId}/prices?${qs}`);
-        const data: { completed?: boolean; rooms?: Room[] } = await res.json();
-        if (!active) return;
-        if (data.rooms?.length) setRooms(data.rooms);
-        polls += 1;
-        if (data.completed || polls >= MAX_POLLS) {
-          setRooms(data.rooms ?? []);
-          setConfirmedAt(new Date().toLocaleTimeString());
-          setLoading(false);
-        } else {
-          setTimeout(poll, polls < FAST_POLLS ? FAST_INTERVAL_MS : SLOW_INTERVAL_MS);
-        }
-      } catch {
-        if (active) setLoading(false);
-      }
-    }
-    poll();
-    return () => {
-      active = false;
-    };
-  }, [hotelId, qs]);
 
   return (
     <section>

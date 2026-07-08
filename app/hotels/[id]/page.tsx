@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { ASCENDA_BASE_URL, ascendaGet } from "@/lib/ascenda/client";
 import { mapHotel, hotelImageUrls } from "@/lib/ascenda/mappers";
 import { RoomList } from "@/app/_components/room-list";
+import { RoomsProvider } from "@/app/_components/rooms-provider";
 import { HotelGallery } from "@/app/_components/hotel-gallery";
 import { HotelMap } from "@/app/_components/hotel-map";
 import { HotelDetailSkeleton } from "@/app/_components/skeletons";
@@ -38,7 +39,7 @@ async function HotelDetail({
   const hasDescription = isHtml ? description.length > 0 : paragraphs.length > 0;
 
   return (
-    <>
+    <RoomsProvider hotelId={id} query={query}>
       {/* Title + rating/score/address summary, Airbnb-style */}
       <header className="mb-5">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
@@ -123,7 +124,7 @@ async function HotelDetail({
         </h2>
         <RoomList hotelId={id} query={query} />
       </section>
-    </>
+    </RoomsProvider>
   );
 }
 

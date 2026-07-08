@@ -1,26 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Grid3x3, X } from "lucide-react";
-import { HotelImage } from "./hotel-image";
+import { useRoomsContext } from "./rooms-provider";
 
 // Airbnb-style hero collage: one large image on the left and a 2x2 grid on the
 // right, with a "Show all photos" affordance that opens a full lightbox grid.
-// Each slot starts from a different candidate index and reuses HotelImage's
-// forward-fallback so unreliable supplier images degrade gracefully.
 export function HotelGallery({
-  images,
+  images: hotelImages,
   alt,
 }: {
   images: string[];
   alt: string;
 }) {
   const [open, setOpen] = useState(false);
+  const { rooms } = useRoomsContext();
+  // URLs that 404/403'd. Shared across every slot so a dead image is dropped
+  // everywhere at once — this is what lets each tile show a *distinct* surviving
+  // photo instead of all collapsing onto the same fallback.
+  const [failed, setFailed] = useState<Set<string>>(new Set());
+  const markFailed = useCallback(
+    (url: string) =>
+      setFailed((prev) => (prev.has(url) ? prev : new Set(prev).add(url))),
+    [],
+  );
 
-  // No photos at all → render nothing rather than an empty placeholder.
-  if (images.length === 0) return null;
+  // The hotel's own image CDN is unreliable — some hotels advertise dozens of
+  // photos that all 403. Room photos come from a different, working source, so
+  // fold them in as extra images. De-duped, hotel images first so genuine hero
+  // shots still lead when they load.
+  const all = useMemo(() => {
+    const roomImages = rooms.flatMap((r) => r.images);
+    return [...new Set([...hotelImages, ...roomImages])];
+  }, [hotelImages, rooms]);
 
-  const sideTiles = images.slice(1, 5);
+  // Only images not yet known-dead. Each gallery slot draws a different entry
+  // from this single ordered list, so no image is ever shown twice and slots
+  // don't all fall back onto the same surviving photo.
+  const live = all.filter((url) => !failed.has(url));
+
+  // No usable photos → render nothing rather than an empty placeholder.
+  if (live.length === 0) return null;
+
+  const hero = live[0];
+  const sideTiles = live.slice(1, 5);
 
   return (
     <>
@@ -30,23 +53,28 @@ export function HotelGallery({
           onClick={() => setOpen(true)}
           className="group relative col-span-1 row-span-1 sm:col-span-1 md:col-span-2 md:row-span-2"
         >
-          <HotelImage
-            candidates={images}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={hero}
             alt={alt}
+            loading="lazy"
+            onError={() => markFailed(hero)}
             className="size-full object-cover transition group-hover:brightness-95"
           />
         </button>
-        {sideTiles.map((_, i) => (
+        {sideTiles.map((url) => (
           <button
             type="button"
-            key={i}
+            key={url}
             onClick={() => setOpen(true)}
             className="group relative hidden md:block"
           >
-            <HotelImage
-              candidates={images.slice(i + 1)}
-              alt={`${alt} photo ${i + 2}`}
-              fallback="none"
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={url}
+              alt={alt}
+              loading="lazy"
+              onError={() => markFailed(url)}
               className="size-full object-cover transition group-hover:brightness-95"
             />
           </button>
@@ -79,12 +107,14 @@ export function HotelGallery({
             </button>
           </div>
           <div className="mx-auto grid max-w-3xl grid-cols-1 gap-3 px-4 pb-12 sm:grid-cols-2">
-            {images.map((_, i) => (
-              <HotelImage
-                key={i}
-                candidates={images.slice(i)}
-                alt={`${alt} photo ${i + 1}`}
-                fallback="none"
+            {live.map((url) => (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={url}
+                src={url}
+                alt={alt}
+                loading="lazy"
+                onError={() => markFailed(url)}
                 className="aspect-[4/3] w-full rounded-xl object-cover ring-1 ring-foreground/10"
               />
             ))}
