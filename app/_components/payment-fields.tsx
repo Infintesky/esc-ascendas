@@ -16,6 +16,9 @@ export function PaymentFields() {
       <div className="rounded-md border border-input bg-background px-3 py-3 shadow-sm">
         <CardElement
           options={{
+            // We don't collect a billing address, so partial postal-code AVS
+            // adds friction for little benefit — drop the field.
+            hidePostalCode: true,
             style: {
               base: {
                 fontSize: "14px",
