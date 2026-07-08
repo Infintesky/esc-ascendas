@@ -1,8 +1,10 @@
 import { Suspense } from "react";
 import { ASCENDA_BASE_URL, ascendaGet } from "@/lib/ascenda/client";
 import { mapHotel, hotelImageUrls } from "@/lib/ascenda/mappers";
+import { parseDescription } from "@/lib/hotel/description";
 import { RoomList } from "@/app/_components/room-list";
 import { RoomsProvider } from "@/app/_components/rooms-provider";
+import { HotelAbout } from "@/app/_components/hotel-about";
 import { HotelGallery } from "@/app/_components/hotel-gallery";
 import { HotelMap } from "@/app/_components/hotel-map";
 import { HotelDetailSkeleton } from "@/app/_components/skeletons";
@@ -25,18 +27,12 @@ async function HotelDetail({
   );
   const hotel = mapHotel(raw);
   const images = hotelImageUrls(hotel);
-  // Supplier descriptions come in two shapes: some are plain text with blank-line
-  // paragraph breaks, others are HTML (<p>, <br />). Detect markup and render it
-  // as HTML; otherwise split the plain text into paragraphs for readability.
-  const description = hotel.description.trim();
-  const isHtml = /<\/?[a-z][\s\S]*>/i.test(description);
-  const paragraphs = isHtml
-    ? []
-    : description
-        .split(/\n{2,}|\r\n\r\n/)
-        .map((p) => p.trim())
-        .filter(Boolean);
-  const hasDescription = isHtml ? description.length > 0 : paragraphs.length > 0;
+  // Descriptions mix prose, an embedded HTML fragment, and a landmark/airport
+  // distance list. parseDescription normalizes all of that into prose paragraphs
+  // plus structured nearby/airport sections.
+  const parsed = parseDescription(hotel.description);
+  const hasDescription =
+    parsed.paragraphs.length > 0 || parsed.nearby.length > 0 || parsed.airports.length > 0;
 
   return (
     <RoomsProvider hotelId={id} query={query}>
@@ -82,18 +78,11 @@ async function HotelDetail({
             <Info className="size-5 text-primary" />
             About this hotel
           </h2>
-          {isHtml ? (
-            <div
-              className="prose prose-sm max-w-2xl leading-relaxed text-foreground/90 prose-p:text-foreground/90 prose-headings:text-foreground prose-strong:text-foreground"
-              dangerouslySetInnerHTML={{ __html: description }}
-            />
-          ) : (
-            <div className="max-w-2xl space-y-4 text-[15px] leading-relaxed text-foreground/90">
-              {paragraphs.map((p, i) => (
-                <p key={i}>{p}</p>
-              ))}
-            </div>
-          )}
+          <HotelAbout
+            paragraphs={parsed.paragraphs}
+            nearby={parsed.nearby}
+            airports={parsed.airports}
+          />
         </section>
       )}
 
