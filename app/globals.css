@@ -84,41 +84,6 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-.dark {
-  --background: oklch(0.16 0.012 165);
-  --foreground: oklch(0.97 0.005 165);
-  --card: oklch(0.205 0.014 165);
-  --card-foreground: oklch(0.97 0.005 165);
-  --popover: oklch(0.205 0.014 165);
-  --popover-foreground: oklch(0.97 0.005 165);
-  --primary: oklch(0.7 0.14 163);
-  --primary-foreground: oklch(0.18 0.03 165);
-  --secondary: oklch(0.27 0.02 165);
-  --secondary-foreground: oklch(0.97 0.005 165);
-  --muted: oklch(0.27 0.015 165);
-  --muted-foreground: oklch(0.72 0.02 165);
-  --accent: oklch(0.3 0.04 165);
-  --accent-foreground: oklch(0.95 0.02 163);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 12%);
-  --input: oklch(1 0 0 / 16%);
-  --ring: oklch(0.7 0.14 163);
-  --brand-gold: oklch(0.82 0.15 80);
-  --chart-1: oklch(0.7 0.14 163);
-  --chart-2: oklch(0.7 0.13 195);
-  --chart-3: oklch(0.8 0.15 80);
-  --chart-4: oklch(0.65 0.2 350);
-  --chart-5: oklch(0.62 0.16 145);
-  --sidebar: oklch(0.205 0.014 165);
-  --sidebar-foreground: oklch(0.97 0.005 165);
-  --sidebar-primary: oklch(0.7 0.14 163);
-  --sidebar-primary-foreground: oklch(0.18 0.03 165);
-  --sidebar-accent: oklch(0.3 0.04 165);
-  --sidebar-accent-foreground: oklch(0.95 0.02 163);
-  --sidebar-border: oklch(1 0 0 / 12%);
-  --sidebar-ring: oklch(0.7 0.14 163);
-}
-
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -128,5 +93,16 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Indeterminate progress bar: a highlight sweeps left→right to signal that
+   results are still streaming in, without implying a known completion %. */
+@keyframes indeterminate-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
   }
 }
