@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, X } from "lucide-react";
 import { useHotelPricesContext } from "./prices-provider";
 import { nightsBetween } from "@/lib/booking/nights";
 import {
@@ -123,14 +123,29 @@ export function ResultsView({
 
   return (
     <div>
-      <h1 className="mb-6 text-2xl font-bold tracking-tight text-foreground">
-        <span className="text-primary">{availableCount}</span> hotels available
+      <h1 className="mb-2 flex items-center text-2xl font-bold tracking-tight text-foreground">
+        <span className="text-primary">{availableCount}</span>
+        <span className="ml-1.5">hotels available</span>
         {!pricesDone && (
-          <span className="ml-2 text-sm font-normal text-muted-foreground">
+          <span className="ml-3 inline-flex items-center gap-1.5 text-sm font-normal text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" aria-hidden />
             searching…
           </span>
         )}
       </h1>
+
+      {/* Indeterminate progress bar while prices stream in. Reserve its height
+          even when done so the results below don't jump when it disappears. */}
+      <div className="mb-6 h-1 overflow-hidden rounded-full" aria-hidden>
+        {!pricesDone && (
+          <div className="h-full w-full bg-primary/15">
+            <div
+              className="h-full w-1/4 rounded-full bg-primary"
+              style={{ animation: "indeterminate-bar 1.1s ease-in-out infinite" }}
+            />
+          </div>
+        )}
+      </div>
 
       <Card className="mb-5 bg-card/80 backdrop-blur">
         <CardContent className="flex flex-wrap items-end gap-6">
