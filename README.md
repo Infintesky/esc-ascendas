@@ -20,8 +20,8 @@ Provide students with a real-world example of a scalable and secure software sys
 | ORM | [Drizzle ORM](https://orm.drizzle.team) + [postgres.js](https://github.com/porsager/postgres) |
 | Database | [Supabase Postgres](https://supabase.com) |
 | Payments | [Stripe](https://stripe.com) (Elements, server-side PaymentIntents) |
-| UI | [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS v4](https://tailwindcss.com) |
-| Animation / Theming | [Framer Motion](https://www.framer.com/motion/) + [next-themes](https://github.com/pacocoursey/next-themes) (light/dark) |
+| UI | [shadcn/ui](https://ui.shadcn.com) + [Tailwind CSS v4](https://tailwindcss.com) (single light theme) |
+| Animation | [Framer Motion](https://www.framer.com/motion/) |
 | Search | [MiniSearch](https://lucaong.github.io/minisearch/) (client-side fuzzy autocomplete) |
 | Validation | [Zod 4](https://zod.dev) |
 | Icons | [Lucide](https://lucide.dev) |
@@ -32,18 +32,20 @@ Provide students with a real-world example of a scalable and secure software sys
 | Feature | Description |
 | --- | --- |
 | **Destination autocomplete** | Fuzzy, city-token-ranked search over ~70k destinations, built into a client index at build time |
-| **Search form** | Past-date graying, auto check-out from check-in, room/guest caps, top-match auto-select |
-| **Results page** (`/search`) | Supplier hotel list joined with live prices, polling until prices settle, filter + sort, list virtualization, Suspense streaming |
-| **Hotel detail** (`/hotels/[id]`) | Images, amenities, fresh per-room rates |
-| **Booking + payment** (`/book`) | Guest/billing form, Stripe Elements (card data never touches our server), PaymentIntent confirmation, masked-card confirmation page |
-| **Theming** | Emerald brand, light/dark mode across all pages |
-| **Accounts, points & GDPR** _(planned)_ | DB schema (`users`, `points_ledger`) exists; auth, points earn/redeem, account pages and GDPR export/delete are not yet wired |
+| **Search form** | Past-date graying, auto check-out from check-in, adults/children guest stepper, room caps, top-match auto-select |
+| **Results page** (`/search`) | Supplier hotel list joined with live prices, polling until prices settle, loading spinner + progress bar, filter + sort, pagination, Suspense streaming |
+| **Hotel detail** (`/hotels/[id]`) | Airbnb-style photo gallery (with room-photo fallback + de-dupe when the supplier CDN 403s), structured "About" section (prose + nearby landmarks + airports), name-based Google Maps embed, amenities, fresh per-room rates |
+| **Booking + payment** (`/book`) | Guest/billing form with salutation, email OTP verification, Stripe Elements (card data never touches our server), PaymentIntent confirmation, masked-card confirmation page |
+| **Theming** | Emerald brand, single light theme across all pages |
+| **Accounts, points & GDPR** (`/account`) | Email-OTP auth, points earn on booking + ledger balance, account overview (bookings, points chart), and GDPR data export/delete |
 
 ## Architecture Notes
 
-- **BFF proxy routes** under `app/api/*` wrap the upstream Ascenda Hotel API (`hotelapi.loyalty.dev`) so the browser never calls it directly — params are validated, responses normalized, and the upstream is kept server-side.
+- **BFF proxy routes** under `app/api/*` wrap the upstream Ascenda Hotel API (`hotelapi.loyalty.dev`) so the browser never calls it directly — params are validated, responses normalized, and the upstream (plus all secrets) is kept server-side. Server Components that need data at initial render (e.g. `/hotels/[id]`) fetch upstream directly rather than round-tripping through these routes.
 - **Abstraction seam**: all upstream payloads pass through `lib/ascenda/mappers.ts` into Zod-validated internal types (`lib/ascenda/types.ts`), decoupling the UI from supplier shapes.
-- **Live pricing**: Ascenda returns prices incrementally (`completed: false`), so `hooks/use-hotel-prices.ts` polls and merges results by hotel id.
+- **Live pricing**: Ascenda returns prices incrementally (`completed: false`), so `hooks/use-hotel-prices.ts` polls with adaptive backoff (fast → slow, capped) and merges results by hotel id so the list grows progressively. The proxy caches completed results in-memory (keyed by upstream URL, 5-min TTL) to collapse a polling burst and nearby repeat searches into a single upstream aggregation.
+- **Connection pooling**: `lib/db/client.ts` runs postgres.js with `prepare: false` (required for Supabase's transaction-mode PgBouncer pooler) and constructs the client lazily behind a `Proxy`, so importing `db` never needs `DATABASE_URL` — keeping services unit-testable without a live database.
+- **Booking orchestration**: `lib/booking/service.ts` composes Stripe payment confirmation → booking insert → points earn in one call, with all dependencies injectable for deterministic testing; points-earn failures never fail a confirmed booking.
 
 ## Runtime & package manager
 
@@ -105,10 +107,11 @@ NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY # public, browser-safe
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY    # public, browser-safe — Maps Embed API (hotel location map)
 ```
 
-> The hotel detail page (`/hotels/[id]`) renders a Google Maps embed of the
-> hotel's coordinates. Enable the **Maps Embed API** for the key in Google Cloud
-> and add an HTTP-referrer restriction (it is browser-exposed). Without a key the
-> map gracefully falls back to a key-free OpenStreetMap embed.
+> The hotel detail page (`/hotels/[id]`) renders a Google Maps embed located by
+> hotel name (plus address to disambiguate), so the pin drops a labelled marker on
+> the property. Enable the **Maps Embed API** for the key in Google Cloud and add
+> an HTTP-referrer restriction (it is browser-exposed). Without a key the map
+> gracefully falls back to a key-free OpenStreetMap embed (by coordinates).
 
 Browser-exposed variables **must** use the `NEXT_PUBLIC_` prefix (Next.js
 convention). Secrets (`DATABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
