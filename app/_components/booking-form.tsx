@@ -25,13 +25,14 @@ type Prefill = Record<string, string>;
 
 const labelClass = "mb-1.5";
 const digitsOnly = (v: string) => v.replace(/\D/g, "");
+const SALUTATIONS = ["Mr", "Mrs", "Ms", "Mx", "Dr"];
 
 export function BookingForm({ prefill }: { prefill: Prefill }) {
   const router = useRouter();
   const stripe = useStripe();
   const elements = useElements();
   const [form, setForm] = useState({
-    firstName: "", lastName: "", email: "", phone: "",
+    salutation: "", firstName: "", lastName: "", email: "", phone: "",
     line1: "", city: "", postalCode: "", country: "", messageToHotel: "",
   });
   const [error, setError] = useState<string | null>(null);
@@ -137,6 +138,7 @@ export function BookingForm({ prefill }: { prefill: Prefill }) {
         children: 0,
         currency: prefill.currency ?? "SGD",
         price: Number(prefill.price),
+        salutation: form.salutation || undefined,
         firstName: form.firstName,
         lastName: form.lastName,
         email: form.email,
@@ -167,6 +169,24 @@ export function BookingForm({ prefill }: { prefill: Prefill }) {
       <fieldset className="space-y-4">
         <legend className="mb-2 text-sm font-semibold text-foreground">Guest details</legend>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <Label className={labelClass} htmlFor="salutation">Salutation</Label>
+            <Select value={form.salutation} onValueChange={(v) => set("salutation", v ?? "")}>
+              <SelectTrigger id="salutation" aria-label="Salutation" className="h-11 w-full">
+                <SelectValue placeholder="Select">
+                  {(v: string) => v || "Select"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {SALUTATIONS.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="hidden sm:block" aria-hidden />
           <div>
             <Label className={labelClass} htmlFor="firstName">First name</Label>
             <Input id="firstName" aria-label="First name" className="h-11" value={form.firstName} onChange={(e) => set("firstName", e.target.value)} required />
