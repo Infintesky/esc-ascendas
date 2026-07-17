@@ -22,9 +22,9 @@ rectangle "Ascenda Loyalty Hotel Booking Platform" {
 
   usecase "Autocomplete destination\n(client-side fuzzy index)" as UCa
   usecase "Poll live prices\n(progressive)" as UCb
-  usecase "Authenticate\n(Supabase Auth)" as UCauth
+  usecase "Verify email\n(Supabase email OTP)" as UCauth
   usecase "Earn loyalty points" as UCearn
-  usecase "Pay via Stripe\n(3DS / OTP resume)" as UCpay
+  usecase "Pay via Stripe\n(single confirm, no 3DS)" as UCpay
   usecase "Delete personal data (GDPR)" as UCgdpr
 
   usecase "MC1: Injection on search params" as MC1 <<misuse>>
@@ -42,9 +42,9 @@ UC2 ..> UCb : <<include>>
 UC3 ..> UCb : <<include>>
 UC4 ..> UCpay : <<include>>
 UC4 ..> UCearn : <<extend>>\n(member only)
-UC5 ..> UCauth : <<include>>
+UC5 ..> UCauth : <<include>>\n(session from OTP)
 UC5 ..> UCgdpr : <<extend>>
-UC4 ..> UCauth : <<extend>>\n(member checkout)
+UC4 ..> UCauth : <<include>>\n(email OTP before pay)
 
 Attacker --> MC1
 Attacker --> MC2
