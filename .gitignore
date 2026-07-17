@@ -49,5 +49,10 @@ CLAUDE.md
 # generated UML renders
 docs/uml/rendered/
 
+# playwright
+/test-results/
+/playwright-report/
+/playwright/.cache/
+
 # Local design docs — kept out of version control
 docs/
