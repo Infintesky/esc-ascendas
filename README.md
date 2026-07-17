@@ -37,7 +37,7 @@ Provide students with a real-world example of a scalable and secure software sys
 | **Hotel detail** (`/hotels/[id]`) | Airbnb-style photo gallery (with room-photo fallback + de-dupe when the supplier CDN 403s), structured "About" section (prose + nearby landmarks + airports), name-based Google Maps embed, amenities, fresh per-room rates |
 | **Booking + payment** (`/book`) | Guest/billing form with salutation, email OTP verification, Stripe Elements (card data never touches our server), PaymentIntent confirmation, masked-card confirmation page |
 | **Theming** | Emerald brand, single light theme across all pages |
-| **Accounts, points & GDPR** (`/account`) | Email-OTP auth, points earn on booking + ledger balance, account overview (bookings, points chart), and GDPR data export/delete |
+| **Accounts, points & GDPR** (`/account`) | Email-OTP auth, points earn on booking + ledger balance, account overview (bookings, points chart), and GDPR right-to-erasure delete (bookings de-identified, personal data + ledger erased, auth user removed) |
 
 ## Architecture Notes
 
