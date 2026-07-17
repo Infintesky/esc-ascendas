@@ -1,0 +1,60 @@
+@startuml seq-5-account-points-gdpr
+' UC5: Manage account — view points history and delete personal data (GDPR).
+title UC5 — Account: Points History & GDPR Deletion
+autonumber
+
+actor Member
+participant "AccountPage\n<<client>>" as Page
+participant "PointsChart\n<<client>>" as Chart
+participant "DeleteAccountButton\n<<client>>" as DelBtn
+participant "AccountController\n/api/account" as Ctrl
+participant "AuthSession\n(Supabase)" as Auth
+participant "PointsService" as Points
+participant "GdprService" as Gdpr
+database "Postgres\n(Drizzle, RLS)" as DB
+
+== View points balance, history & bookings ==
+Member -> Page : open /account  (client page fires both fetches in parallel)
+Page -> Ctrl : GET /api/account/points
+Ctrl -> Auth : getCurrentUserId(serverSupabase)
+Auth --> Ctrl : userId
+alt not authenticated
+  Ctrl --> Page : 401 Unauthorized (Page shows "sign in" state)
+else authenticated
+  Ctrl -> Points : getBalance(userId) + getHistory(userId)  (Promise.all)
+  Points -> DB : SELECT delta / SELECT * ORDER BY created_at DESC (RLS-scoped)
+  DB --> Points : deltas / PointsLedgerEntry[]
+  Points -> Points : deriveBalance(entries)
+  Points --> Ctrl : { balance, history }
+  Ctrl --> Page : { balance, history }
+  Page -> Chart : toChartSeries(history)
+  Chart --> Member : Recharts balance-over-time
+
+  Page -> Ctrl : GET /api/account/bookings
+  Ctrl -> Auth : getCurrentUserId(serverSupabase)
+  Ctrl -> DB : SELECT own bookings WHERE user_id ORDER BY created_at DESC
+  DB --> Ctrl : rows
+  note right of Ctrl : maps to summary rows — card masked to last4/brand,\nbilling address omitted from the list view
+  Ctrl --> Page : { bookings }
+  Page --> Member : render booking list
+end
+
+== Delete account (GDPR) ==
+Member -> DelBtn : click "Delete Account" + confirm
+DelBtn -> Ctrl : DELETE /api/account
+Ctrl -> Auth : getCurrentUserId(serverSupabase)
+Auth --> Ctrl : userId
+Ctrl -> Gdpr : deleteUserData(userId)
+group transaction
+  Gdpr -> DB : UPDATE bookings SET user_id = NULL WHERE user_id = userId
+  note right of DB : bookings retained for audit\nbut carry no PII link
+  Gdpr -> DB : DELETE FROM points_ledger WHERE user_id = userId
+  Gdpr -> DB : DELETE FROM users WHERE id = userId
+end
+Gdpr -> Auth : auth.admin.deleteUser(userId)
+Auth --> Gdpr : ok
+Gdpr --> Ctrl : { deletedUser: true }
+Ctrl --> DelBtn : 200 OK
+DelBtn -> Auth : sign out
+DelBtn --> Member : redirect to "/" (account erased)
+@enduml

@@ -1,0 +1,62 @@
+@startuml use-case
+' Use-case diagram for esc-ascendas (SUTD 50.003 Ascenda Loyalty case study)
+' Source of truth: docs/superpowers/specs/2026-06-25-hotel-booking-platform-design.md (section 6)
+' Uses the pure-Java Smetana layout so it renders without a Graphviz install.
+!pragma layout smetana
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+actor "Guest\n(unauthenticated)" as Guest
+actor "Member\n(authenticated)" as Member
+actor "Attacker" as Attacker <<misuse>>
+
+Member --|> Guest
+
+rectangle "Ascenda Loyalty Hotel Booking Platform" {
+  usecase "UC1: Search a destination" as UC1
+  usecase "UC2: Browse hotel results" as UC2
+  usecase "UC3: View hotel & room details" as UC3
+  usecase "UC4: Make a booking with payment" as UC4
+  usecase "UC5: Manage account\n(view points / delete account)" as UC5
+
+  usecase "Autocomplete destination\n(client-side fuzzy index)" as UCa
+  usecase "Poll live prices\n(progressive)" as UCb
+  usecase "Authenticate\n(Supabase Auth)" as UCauth
+  usecase "Earn loyalty points" as UCearn
+  usecase "Pay via Stripe\n(3DS / OTP resume)" as UCpay
+  usecase "Delete personal data (GDPR)" as UCgdpr
+
+  usecase "MC1: Injection on search params" as MC1 <<misuse>>
+  usecase "MC2: Replay booking submission" as MC2 <<misuse>>
+}
+
+Guest --> UC1
+Guest --> UC2
+Guest --> UC3
+Guest --> UC4
+Member --> UC5
+
+UC1 ..> UCa : <<include>>
+UC2 ..> UCb : <<include>>
+UC3 ..> UCb : <<include>>
+UC4 ..> UCpay : <<include>>
+UC4 ..> UCearn : <<extend>>\n(member only)
+UC5 ..> UCauth : <<include>>
+UC5 ..> UCgdpr : <<extend>>
+UC4 ..> UCauth : <<extend>>\n(member checkout)
+
+Attacker --> MC1
+Attacker --> MC2
+MC1 ..> UC1 : <<threatens>>
+MC2 ..> UC4 : <<threatens>>
+
+note bottom of MC1
+  Mitigated by Zod validation at every
+  route boundary + parameterized Drizzle queries.
+end note
+note bottom of MC2
+  Mitigated by idempotent Stripe PaymentIntent
+  + unique booking_reference.
+end note
+@enduml

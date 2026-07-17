@@ -1,0 +1,75 @@
+@startuml seq-4-booking-payment
+' UC4: Make a booking with payment.
+' The second UML attach point named in the spec (section 6).
+' Two independent verifications guard the booking:
+'   1. Email ownership  -> Supabase email OTP (skipped for the reserved demo address)
+'   2. Card             -> Stripe Elements; raw PAN/CVV never reach our server
+' Payment is a single synchronous confirm (automatic_payment_methods with
+' allow_redirects:"never") — no 3DS/redirect step in this build, so a booking
+' resolves to exactly "confirmed" or "failed".
+title UC4 — Booking + Payment (email OTP + Stripe confirm)
+autonumber
+
+actor Guest
+participant "BookingForm\n<<client>>" as Form
+participant "Supabase Auth\n(email OTP)" as Auth
+participant "Stripe.js\n(Elements)" as StripeJS
+participant "BookingsController\n/api/bookings" as Ctrl
+participant "BookingService" as Svc
+participant "StripePaymentService" as Pay
+participant "Stripe API" as Stripe
+participant "PointsService" as Points
+database "Postgres\n(Drizzle)" as DB
+
+== Verify email ownership (before payment is allowed) ==
+Guest -> Form : enter email, click "Verify"
+alt reserved demo email (isTestEmail)
+  Form -> Form : emailVerified = true (challenge skipped)
+else real email
+  Form -> Auth : signInWithOtp({ email, shouldCreateUser })
+  Auth --> Guest : 6-digit code by email
+  Guest -> Form : enter code, click "Confirm"
+  Form -> Auth : verifyOtp({ email, token, type:"email" })
+  Auth --> Form : ok -> emailVerified = true
+end
+note right of Form : submit button stays disabled until emailVerified
+
+== Capture card client-side (PCI scope minimized) ==
+Guest -> Form : fill guest + billing details, card (Stripe CardElement)
+Form -> Form : guard emailVerified && country selected
+Form -> StripeJS : createPaymentMethod({ type:"card", card })
+note right of StripeJS : raw PAN/CVV never reach our server
+StripeJS --> Form : paymentMethodId (pm_***)
+Form -> Ctrl : POST /api/bookings { CreateBookingInput + paymentMethodId }
+
+== Validate + create booking ==
+Ctrl -> Ctrl : CreateBookingSchema.safeParse() (Zod)
+alt invalid payload
+  Ctrl --> Form : 400 { error, issues }
+else valid
+  Ctrl -> Svc : createBooking(input)
+  Svc -> Pay : confirmCardPayment({ amount, currency, paymentMethodId })
+  Pay -> Stripe : paymentIntents.create({ amount*100, confirm:true,\n  automatic_payment_methods:{ enabled, allow_redirects:"never" }, expand:[latest_charge] })
+  Stripe --> Pay : PaymentIntent(status, latest_charge.card{last4, brand})
+  Pay --> Svc : { status, paymentIntentId, cardLast4, cardBrand, clientSecret }
+  Svc -> Svc : generateBookingReference(); nightsBetween()
+
+  alt status == "succeeded"
+    Svc -> DB : INSERT booking(status=confirmed, guest+billing details,\n  stripePaymentIntentId, cardLast4, cardBrand)
+    note right of DB : never persists PAN/CVV/paymentMethodId
+    opt input.userId present (member)
+      Svc -> Points : recordPointsEntry(userId, +pointsForBooking(price), "earn: booking <ref>")
+      Points -> DB : append points_ledger(delta, balanceAfter)
+      note over Svc, Points : wrapped in try/catch — a points failure never fails the booking
+    end
+    Svc --> Ctrl : { reference, status: confirmed, cardLast4 }
+    Ctrl --> Form : 201 { reference, status }
+    Form --> Guest : navigate /book/confirmation/:reference
+  else payment not succeeded
+    Svc -> DB : INSERT booking(status=failed, stripePaymentIntentId)
+    Svc --> Ctrl : { reference, status: failed }
+    Ctrl --> Form : 402 { error, reference }
+    Form --> Guest : "Payment failed. Please try another card."
+  end
+end
+@enduml

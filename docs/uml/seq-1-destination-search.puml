@@ -1,0 +1,42 @@
+@startuml seq-1-destination-search
+' UC1: Search a destination  (client-side fuzzy autocomplete + submit)
+title UC1 — Destination Search & Autocomplete
+autonumber
+
+actor Guest
+participant "SearchForm\n<<client>>" as Form
+participant "DestinationAutocomplete\n<<client>>" as AC
+participant "FuzzySearch\n(MiniSearch)" as Fuzzy
+participant "Static asset\n/destinations-index.json" as Index
+participant "Next.js Router" as Router
+
+== Index bootstrap (on mount) ==
+AC -> Index : fetch("/destinations-index.json")
+Index --> AC : DestinationEntry[]
+AC -> Fuzzy : buildIndex(entries)
+note right of Fuzzy : dedupes repeated uids\n(prefix + fuzzy 0.2)
+Fuzzy --> AC : MiniSearch index
+
+== Type-ahead (sub-100ms, fully client-side) ==
+Guest -> AC : type "singa"
+AC -> Fuzzy : searchDestinations(index, "singa", 8)
+Fuzzy --> AC : DestinationEntry[] (ranked)
+AC --> Guest : render suggestion listbox
+Guest -> AC : click "Singapore, Singapore"
+AC -> Form : onSelect(entry)
+note over AC, Form : onTopMatchChange also fires while typing,\nso a typed place + Search works without a click
+
+== Submit ==
+Guest -> Form : pick dates, rooms, adults/children (GuestSelector), click Search
+alt no destination picked
+  Form --> Guest : "Please enter and pick a destination."
+end
+Form -> Form : validateDates(checkin, checkout, now)
+alt invalid (checkin < 3 days out, or checkout <= checkin)
+  Form --> Guest : show inline error (role="alert")
+else valid
+  note right of Form : upstream takes one occupancy count per room,\nso guests = adults + children
+  Form -> Router : push("/search?destination_id=..&checkin=..&checkout=..&rooms=..&guests=..&currency=SGD&country_code=SG&lang=en_US")
+  Router --> Guest : navigate to results page (UC2)
+end
+@enduml

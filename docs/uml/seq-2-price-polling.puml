@@ -1,0 +1,54 @@
+@startuml seq-2-price-polling
+' UC2: Browse hotel results — progressive price polling.
+' One of the two UML attach points named in the spec (section 6).
+title UC2 — Results & Progressive Price Polling
+autonumber
+
+actor Guest
+participant "SearchPage\n<<server component>>" as Page
+participant "PricesProvider\n<<client, context>>" as PP
+participant "useHotelPrices\n<<hook>>" as Hook
+participant "ResultsView\n<<client>>" as RV
+participant "PricesController\n/api/hotels/prices" as Ctrl
+participant "AscendaClient" as Client
+participant "AscendaMappers" as Map
+participant "Ascenda mock API" as Ascenda
+
+== Static hotels (server-rendered, cached; awaited in Suspense) ==
+Guest -> Page : GET /search?<params>
+Page -> Client : ascendaGet(/api/hotels?destination_id) [revalidate 24h]
+Client -> Ascenda : GET /api/hotels
+Ascenda --> Client : raw hotel JSON[]
+Client --> Page : raw[]
+Page -> Map : raw.map(mapHotel)
+Map --> Page : Hotel[]
+note over Page, PP : PricesProvider sits OUTSIDE the Suspense boundary,\nso polling starts as the shell hydrates — not after the hotel list resolves
+Page --> RV : <ResultsView hotels query /> (inside <PricesProvider query>)
+
+== Client-owned poll loop (progressive render) ==
+PP -> Hook : useHotelPrices(query)
+loop until completed OR polls >= MAX_POLLS (26, ~40s)
+  Hook -> Ctrl : GET /api/hotels/prices?<query>
+  Ctrl -> Ctrl : SearchParamsSchema.safeParse() (Zod)
+  alt invalid params
+    Ctrl --> Hook : 400 invalid search params
+  else valid
+    Ctrl -> Client : buildPricesUrl(+stub partner/landing/product)
+    Client -> Ascenda : GET /api/hotels/prices (no-store)
+    Ascenda --> Client : { completed, hotels[] } (partial)
+    Client --> Ctrl : raw
+    Ctrl -> Map : mapPricesResponse(raw)
+    Map --> Ctrl : PricesResponse
+    Ctrl --> Hook : { completed, hotels[] }
+    Hook -> Hook : merge by id (latest wins), setHotels()
+    Hook -> RV : context update { hotels, completed }
+    RV -> RV : mergeHotelsWithPrices + applyFilters + sortListings
+    RV --> Guest : render/refresh HotelCards + streaming progress bar
+    opt not completed
+      Hook -> Hook : setTimeout(poll, polls < FAST_POLLS(8) ? 600ms : 2000ms)
+    end
+  end
+end
+Guest -> RV : click "Select" on a hotel
+RV --> Guest : navigate /hotels/:id?<query>  (UC3)
+@enduml

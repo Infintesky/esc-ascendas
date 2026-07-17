@@ -1,0 +1,415 @@
+@startuml class-diagram
+' Comprehensive class diagram for esc-ascendas, consistent with use-case.puml.
+' Spans the three logical backend domains (Search, Booking, Account) plus the
+' BFF route handlers, the Drizzle persistence entities, and the React frontend.
+' Kept in sync with the current implementation under lib/, app/api/, app/_components/,
+' and hooks/ (not just the original plans).
+
+' Uses the pure-Java Smetana layout so it renders without a Graphviz install.
+' (Remove this pragma to use Graphviz/dot for nicer orthogonal routing.)
+!pragma layout smetana
+skinparam classAttributeIconSize 0
+hide empty members
+
+' ===================================================================
+package "Domain Types  (Zod-validated internal contract)" <<Frame>> {
+  class Hotel {
+    +id : string
+    +name : string
+    +latitude : number
+    +longitude : number
+    +address : string
+    +rating : number
+    +guestRating : number
+    +description : string
+    +amenities : string[]
+    +imagePrefix : string
+    +imageSuffix : string
+    +imageCount : number
+  }
+  class Room {
+    +key : string
+    +roomType : string
+    +freeCancellation : boolean
+    +description : string
+    +longDescription : string
+    +images : string[]
+    +amenities : string[]
+    +price : number
+    +marketRates : number[]
+  }
+  class PriceResult {
+    +id : string
+    +searchRank : number
+    +price : number
+    +marketRates : number[]
+  }
+  class PricesResponse {
+    +completed : boolean
+    +hotels : PriceResult[]
+  }
+  class HotelListing {
+    +price : number | null
+    +searchRank : number | null
+  }
+  class DestinationEntry {
+    +uid : string
+    +term : string
+    +type : string
+  }
+  class SearchParams {
+    +destinationId : string
+    +checkin : string
+    +checkout : string
+    +currency : string    ' default SGD
+    +countryCode : string ' default SG
+    +lang : string        ' default en_US
+    +rooms : int
+    +guests : int
+  }
+  class ResultFilters {
+    +minStars? : number
+    +minGuestRating? : number
+    +minPrice? : number
+    +maxPrice? : number
+  }
+  class CreateBookingInput {
+    +destinationId : string
+    +hotelId : string
+    +roomKey : string
+    +roomType : string
+    +checkin : string
+    +checkout : string
+    +adults : int
+    +children : int
+    +currency : string
+    +price : number
+    +salutation? : string
+    +firstName : string
+    +lastName : string
+    +email : string
+    +phone : string
+    +messageToHotel? : string
+    +billingAddress : BillingAddress
+    +paymentMethodId : string
+  }
+  class BillingAddress {
+    +line1 : string
+    +city : string
+    +postalCode : string
+    +country : string
+  }
+  class LedgerEntry {
+    +delta : int
+    +balanceAfter : int
+    +reason : string
+  }
+}
+
+HotelListing --|> Hotel
+HotelListing "0..*" o-- "0..1" PriceResult : enriched by >
+PricesResponse "1" *-- "0..*" PriceResult
+CreateBookingInput "1" *-- "1" BillingAddress
+
+' ===================================================================
+package "Persistence  (Drizzle ORM / Supabase Postgres)" <<Database>> {
+  enum BookingStatus {
+    pending
+    confirmed
+    failed
+  }
+  entity User {
+    +id : uuid <<PK, FK auth.users>>
+    --
+    +email : text
+    +salutation : text
+    +firstName : text  <<PII>>
+    +lastName : text   <<PII>>
+    +phone : text      <<PII>>
+    +createdAt : timestamptz
+  }
+  entity Booking {
+    +id : uuid <<PK>>
+    +bookingReference : text <<unique>>
+    --
+    +userId : uuid <<FK, nullable, ON DELETE SET NULL>>
+    +destinationId : text
+    +hotelId : text
+    +roomKey : text
+    +checkin : date
+    +checkout : date
+    +nights : int
+    +adults : int
+    +children : int
+    +roomType : text
+    +messageToHotel : text
+    .. guest contact (captured at booking, survives user deletion) ..
+    +guestSalutation : text
+    +guestFirstName : text
+    +guestLastName : text
+    +guestEmail : text
+    +guestPhone : text
+    .. billing address ..
+    +billingLine1 : text
+    +billingCity : text
+    +billingPostalCode : text
+    +billingCountry : text
+    .. payment (non-PII refs only) ..
+    +price : numeric
+    +currency : text
+    +status : BookingStatus
+    +stripePaymentIntentId : text
+    +cardLast4 : text
+    +cardBrand : text
+    +createdAt : timestamptz
+  }
+  entity PointsLedgerEntry {
+    +id : uuid <<PK>>
+    --
+    +userId : uuid <<FK, ON DELETE CASCADE>>
+    +bookingId : uuid <<FK, nullable, ON DELETE SET NULL>>
+    +delta : int
+    +balanceAfter : int
+    +reason : text
+    +createdAt : timestamptz
+  }
+}
+
+User "1" o-- "0..*" Booking : places >
+User "1" *-- "0..*" PointsLedgerEntry : owns (append-only) >
+Booking "0..1" -- "0..*" PointsLedgerEntry : accrues >
+Booking "1" -- "1" BookingStatus
+
+' ===================================================================
+package "Search Domain  (BFF + client index)" <<Frame>> {
+  class AscendaClient <<service>> {
+    +{static} ASCENDA_BASE_URL : string
+    +buildPricesUrl(q : PriceQuery) : string
+    +buildHotelPricesUrl(hotelId : string, q : PriceQuery) : string
+    +ascendaGet<T>(url : string, init? : RequestInit) : Promise<T>
+    -applyStub(url : URL) : void
+  }
+  class AscendaMappers <<service>> {
+    +mapHotel(raw : unknown) : Hotel
+    +mapRooms(raw : unknown) : Room[]
+    +mapPricesResponse(raw : unknown) : PricesResponse
+    +hotelImageUrls(hotel : Hotel) : string[]
+  }
+  class SearchParamsModule <<service>> {
+    +serializeGuests(rooms : int, guestsPerRoom : int) : string
+    +validateDates(checkin : string, checkout : string, now? : Date) : { ok, error? }
+    +minCheckinDate(now? : Date) : string
+    +addDaysISO(date : string, n : int) : string
+    +clampInt(value : number, min : int, max : int) : int
+    +{static} MIN_CHECKIN_DAYS_AHEAD : int
+    +{static} MAX_ROOMS : int
+    +{static} MAX_GUESTS_PER_ROOM : int
+    +SearchParamsSchema : ZodSchema
+  }
+  class DestinationIndex <<service>> {
+    +trimDestinations(raw : unknown[]) : DestinationEntry[]
+  }
+  class FuzzySearch <<service>> {
+    +buildIndex(entries : DestinationEntry[]) : MiniSearch
+    +searchDestinations(index, query : string, limit? : int) : DestinationEntry[]
+  }
+  class ResultsLogic <<service>> {
+    +mergeHotelsWithPrices(hotels : Hotel[], prices : PriceResult[]) : HotelListing[]
+    +applyFilters(listings : HotelListing[], f : ResultFilters) : HotelListing[]
+    +sortListings(listings, by : "price"|"rating", dir : "asc"|"desc") : HotelListing[]
+  }
+  class HotelDescription <<service>> {
+    +parseDescription(raw : string) : ParsedDescription
+  }
+}
+
+AscendaMappers ..> Hotel
+AscendaMappers ..> Room
+AscendaMappers ..> PricesResponse
+FuzzySearch ..> DestinationEntry
+DestinationIndex ..> DestinationEntry
+ResultsLogic ..> HotelListing
+ResultsLogic ..> ResultFilters
+SearchParamsModule ..> SearchParams
+
+' ===================================================================
+package "Booking Domain" <<Frame>> {
+  class BookingService <<service>> {
+    +createBooking(input : CreateBookingInput & { userId? }, deps? : Deps) : Promise<{ reference, status, cardLast4 }>
+  }
+  class StripePaymentService <<service>> {
+    +getStripe() : Stripe
+    +confirmCardPayment(args : { amount, currency, paymentMethodId }) : Promise<PaymentResult>
+  }
+  class BookingReference <<service>> {
+    +generateBookingReference(now? : Date, rand? : () => number) : string
+  }
+  class NightsModule <<service>> {
+    +nightsBetween(checkin : string, checkout : string) : int
+  }
+  class PaymentResult {
+    +status : string
+    +paymentIntentId : string
+    +cardLast4 : string | null
+    +cardBrand : string | null
+    +clientSecret : string | null
+  }
+}
+
+BookingService ..> CreateBookingInput
+BookingService ..> StripePaymentService : confirms via >
+BookingService ..> BookingReference : uses >
+BookingService ..> NightsModule : uses >
+BookingService ..> Booking : persists >
+StripePaymentService ..> PaymentResult
+BookingService ..> PointsService : earns on confirm (member only) >
+
+' ===================================================================
+package "Account Domain" <<Frame>> {
+  class AuthSession <<service>> {
+    +getCurrentUserId(client : AuthLike) : Promise<string | null>
+    +createServerSupabase() : Promise<SupabaseClient>
+    +createBrowserSupabase() : SupabaseClient
+  }
+  class PointsLedgerLogic <<service>> {
+    +deriveBalance(entries : { delta }[]) : int
+    +nextEntry(currentBalance : int, delta : int, reason : string) : LedgerEntry
+  }
+  class PointsRules <<service>> {
+    +{static} EARN_RATE : int
+    +pointsForBooking(price : number) : int
+  }
+  class PointsService <<service>> {
+    +getBalance(userId : string, deps?) : Promise<int>
+    +getHistory(userId : string) : Promise<PointsLedgerEntry[]>
+    +recordPointsEntry(args : { userId, delta, reason, bookingId? }, deps?) : Promise<int>
+  }
+  class GdprService <<service>> {
+    +deleteUserData(userId : string, ops?) : Promise<{ deletedUser : boolean }>
+  }
+}
+
+PointsService ..> PointsLedgerLogic : uses >
+PointsService ..> PointsLedgerEntry : appends / reads >
+PointsLedgerLogic ..> LedgerEntry
+BookingService ..> PointsRules : pointsForBooking >
+GdprService ..> User : deletes (+ auth.admin.deleteUser) >
+GdprService ..> PointsLedgerEntry : deletes >
+GdprService ..> Booking : de-identifies (userId := null) >
+AuthSession ..> User
+
+' ===================================================================
+package "BFF Route Handlers  (Controllers)" <<Cloud>> {
+  class HotelsController <<route>> {
+    +GET /api/hotels(req) : Hotel[]
+    +GET /api/hotels/:id(req, params) : Hotel
+  }
+  class PricesController <<route>> {
+    +GET /api/hotels/prices(req) : PricesResponse
+    +GET /api/hotels/:id/prices(req, params) : { completed, rooms }
+  }
+  class BookingsController <<route>> {
+    +POST /api/bookings(req) : 201 { reference, status } | 402 payment failed
+    +GET /api/bookings/:reference(req, params) : BookingSummaryData
+  }
+  class AccountController <<route>> {
+    +DELETE /api/account(req) : { deletedUser }
+    +GET /api/account/points(req) : { balance, history }
+    +GET /api/account/bookings(req) : { bookings }
+  }
+}
+
+HotelsController ..> AscendaClient
+HotelsController ..> AscendaMappers
+PricesController ..> AscendaClient
+PricesController ..> AscendaMappers
+PricesController ..> SearchParamsModule
+BookingsController ..> BookingService
+BookingsController ..> CreateBookingInput
+AccountController ..> AuthSession
+AccountController ..> GdprService
+AccountController ..> PointsService
+AccountController ..> Booking : lists own >
+
+' ===================================================================
+package "Frontend  (React 19 Components & Hooks)" <<Node>> {
+  class SearchForm <<client>> {
+    -destination : DestinationEntry | null
+    -checkin / checkout : string
+    -rooms / adults / children : int
+    +handleSubmit(e) : void
+  }
+  class DestinationAutocomplete <<client>> {
+    -query : string
+    -index : MiniSearch
+    +onSelect(entry : DestinationEntry) : void
+    +onTopMatchChange(entry) : void
+  }
+  class DateRangeField <<client>>
+  class GuestSelector <<client>> {
+    +onChange({ adults, childCount }) : void
+  }
+  class ResultsView <<client>> {
+    -filters : ResultFilters
+    -sortBy : "price" | "rating"
+  }
+  class HotelCard <<client>>
+  class PricesProvider <<client>> {
+    ' context wrapper around useHotelPrices
+  }
+  class RoomsProvider <<client>> {
+    ' context wrapper around useHotelRooms
+  }
+  class HotelGallery <<client>>
+  class HotelAbout <<client>>
+  class HotelMap <<client>>
+  class RoomList <<client>> {
+    -rooms : Room[]
+    -confirmedAt : string | null
+  }
+  class BookingForm <<client>> {
+    -emailVerified : boolean
+    +sendOtp() / confirmOtp() : Promise<void>
+    +handleSubmit() : Promise<void>
+  }
+  class PaymentFields <<client>>
+  class PointsChart <<client>> {
+    +toChartSeries(history) : Series[]
+  }
+  class DeleteAccountButton <<client>>
+  class useHotelPrices <<hook>> {
+    +hotels : PriceResult[]
+    +completed : boolean
+    +error : string | null
+    -FAST_INTERVAL_MS / SLOW_INTERVAL_MS : int
+    -FAST_POLLS / MAX_POLLS : int
+  }
+  class useHotelRooms <<hook>> {
+    +rooms : Room[]
+    +loading : boolean
+    +confirmedAt : string | null
+  }
+}
+
+SearchForm *-- DestinationAutocomplete
+SearchForm *-- DateRangeField
+SearchForm *-- GuestSelector
+SearchForm ..> SearchParamsModule : validateDates / clampInt >
+DestinationAutocomplete ..> FuzzySearch
+ResultsView *-- "0..*" HotelCard
+ResultsView ..> ResultsLogic
+PricesProvider ..> useHotelPrices
+ResultsView ..> PricesProvider : reads context <
+useHotelPrices ..> PricesController : polls >
+RoomsProvider ..> useHotelRooms
+RoomList ..> RoomsProvider : reads context <
+HotelGallery ..> RoomsProvider : borrows room photos <
+useHotelRooms ..> PricesController : polls fresh rooms >
+HotelCard ..> HotelListing
+BookingForm *-- PaymentFields
+BookingForm ..> AuthSession : email OTP (Supabase) >
+BookingForm ..> BookingsController : POST >
+PaymentFields ..> StripePaymentService : tokenizes (Stripe Elements) >
+PointsChart ..> AccountController
+DeleteAccountButton ..> AccountController
+@enduml

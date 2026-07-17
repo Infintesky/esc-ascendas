@@ -1,0 +1,51 @@
+@startuml seq-3-hotel-detail
+' UC3: View hotel & room details — fresh rate re-fetch ("most accurate rates across views").
+title UC3 — Hotel Detail & Fresh Room Rates
+autonumber
+
+actor Guest
+participant "HotelDetailPage\n<<server component>>" as Page
+participant "RoomsProvider\n<<client, context>>" as RP
+participant "useHotelRooms\n<<hook>>" as Hook
+participant "HotelGallery / RoomList\n<<client>>" as RL
+participant "PricesController\n/api/hotels/:id/prices" as Ctrl
+participant "AscendaClient" as Client
+participant "AscendaMappers" as Map
+participant "Ascenda mock API" as Ascenda
+
+== Static hotel info (cached) ==
+Guest -> Page : GET /hotels/:id?<query>
+Page -> Client : ascendaGet(/api/hotels/:id) [revalidate 24h]
+Client -> Ascenda : GET /api/hotels/:id
+Ascenda --> Client : raw hotel JSON
+Client --> Page : raw
+Page -> Map : mapHotel(raw)
+Map --> Page : Hotel
+Page -> Map : hotelImageUrls(hotel)
+Map --> Page : string[]  (prefix{i}suffix)
+note over Page : HotelAbout parses the blurb (parseDescription);\nHotelMap geocodes by hotel name, not lat/lng
+Page --> Guest : render name/address/amenities/photos/map
+Page --> RP : <RoomsProvider hotelId query> wrapping gallery + rooms
+
+== Poll fresh room rates once, shared via context (never reuse list prices) ==
+RP -> Hook : useHotelRooms(hotelId, query)
+loop until completed OR polls >= MAX_POLLS (26)
+  Hook -> Ctrl : GET /api/hotels/:id/prices?<identical query>
+  Ctrl -> Ctrl : SearchParamsSchema.safeParse() (Zod)
+  Ctrl -> Client : buildHotelPricesUrl(id, +stub params)
+  Client -> Ascenda : GET /api/hotels/:id/price (no-store)
+  Ascenda --> Client : raw room JSON (warming up; may be empty)
+  Client --> Ctrl : raw
+  Ctrl -> Map : mapRooms(raw)
+  Map --> Ctrl : Room[]
+  Ctrl --> Hook : { completed, rooms[] }
+  opt not completed
+    Hook -> Hook : setTimeout(poll, polls < FAST_POLLS(8) ? 600ms : 2000ms)
+  end
+end
+Hook -> RL : context { rooms, loading, confirmedAt = now.toLocaleTimeString() }
+note right of RL : gallery falls back to room photos when the hotel\nimage CDN 403s; de-dupes across both sources
+RL --> Guest : room cards + "Rate confirmed at HH:MM" badge
+Guest -> RL : click "Select room"
+RL --> Guest : navigate /book?hotel_id&room_key&room_type&price&<query>  (UC4)
+@enduml
