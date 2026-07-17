@@ -85,13 +85,70 @@ bun run dev          # dev server (next dev)
 bun run build        # production build (regenerates search index first)
 bun run start        # serve the production build
 bun run lint         # eslint (flat config)
-bun run test         # run all tests (vitest)
-bun run test:watch   # watch mode
+bun run test         # unit + integration tests (vitest)
+bun run test:watch   # vitest watch mode
+bun run test:e2e     # end-to-end tests (playwright; auto-starts the app)
+bun run test:e2e:ui  # playwright UI mode
 bun run build:index  # rebuild the destination autocomplete index
 bun run db:generate  # generate Drizzle migrations
 bun run db:migrate   # apply migrations
 bun run db:push      # push schema directly (dev shortcut)
 ```
+
+## Testing
+
+Two runners, kept separate: **Vitest** for unit/integration (under `test/`) and
+**Playwright** for end-to-end browser tests (under `e2e/`).
+
+### Unit + integration (Vitest)
+
+Fast, no server or secrets required.
+
+```sh
+bun run test          # run all once
+bun run test:watch    # watch mode
+bun x vitest run test/api/bookings.test.ts   # a single file
+bun x vitest run -t "payment failed"          # tests matching a name
+```
+
+### End-to-end (Playwright)
+
+Drives a real browser. The config **auto-starts the app** (`bun run build && bun
+run start`) and stops it after, so no server needs to be running. Install the
+browser binary once:
+
+```sh
+bun x playwright install chromium
+```
+
+```sh
+bun run test:e2e                    # all E2E, headless
+bun run test:e2e -- home.spec.ts    # a single spec
+bun run test:e2e:ui                 # interactive UI mode
+bun run test:e2e:report             # open the last HTML report
+```
+
+To reuse an already-running server (e.g. `bun run dev`, or a Vercel preview)
+instead of building, set `PLAYWRIGHT_BASE_URL`:
+
+```sh
+PLAYWRIGHT_BASE_URL=http://localhost:3000 bun run test:e2e
+```
+
+`home` and `search-and-browse` need no secrets (`search-and-browse` does call the
+live upstream hotel API, so it needs network). The **booking** spec writes a real
+booking and is **skipped unless `RUN_BOOKING_E2E=1`** with live env
+(`DATABASE_URL`, `STRIPE_SECRET_KEY` test + `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`,
+`NEXT_PUBLIC_SUPABASE_URL` + `_ANON_KEY`); it uses the demo email
+`demo@ascenda.test` (skips OTP) and Stripe test card `4242 4242 4242 4242`:
+
+```sh
+RUN_BOOKING_E2E=1 bun run test:e2e -- booking.spec.ts
+```
+
+> Hitting a `global-error.js … React Client Manifest` error under `next dev`? Clear
+> the stale cache with `rm -rf .next` — the E2E config avoids it by using a
+> production build. More detail lives in [`e2e/README.md`](e2e/README.md).
 
 ## Environment Variables
 
