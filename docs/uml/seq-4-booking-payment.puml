@@ -5,9 +5,9 @@
 '   1. Email ownership  -> Supabase email OTP (skipped for the reserved demo address)
 '   2. Card             -> Stripe Elements; raw PAN/CVV never reach our server
 ' Payment is a single synchronous confirm (automatic_payment_methods with
-' allow_redirects:"never") — no 3DS/redirect step in this build, so a booking
+' allow_redirects:"never"), no 3DS/redirect step in this build, so a booking
 ' resolves to exactly "confirmed" or "failed".
-title UC4 — Booking + Payment (email OTP + Stripe confirm)
+title UC4: Booking + Payment (email OTP + Stripe confirm)
 autonumber
 
 actor Guest
@@ -17,9 +17,14 @@ participant "Stripe.js\n(Elements)" as StripeJS
 participant "BookingsController\n/api/bookings" as Ctrl
 participant "BookingService" as Svc
 participant "StripePaymentService" as Pay
-participant "Stripe API" as Stripe
+actor "Stripe\n(Payment Gateway)" as Stripe
 participant "PointsService" as Points
 database "Postgres\n(Drizzle)" as DB
+
+== Display booking form (stay summary) ==
+Guest -> Form : GET /book?hotel_id&room_key&room_type&price&<query>
+activate Form
+Form --> Guest : render stay summary (hotel name, room type, dates, nights, guests)
 
 == Verify email ownership (before payment is allowed) ==
 Guest -> Form : enter email, click "Verify"
@@ -27,49 +32,79 @@ alt reserved demo email (isTestEmail)
   Form -> Form : emailVerified = true (challenge skipped)
 else real email
   Form -> Auth : signInWithOtp({ email, shouldCreateUser })
+  activate Auth
   Auth --> Guest : 6-digit code by email
+  deactivate Auth
   Guest -> Form : enter code, click "Confirm"
   Form -> Auth : verifyOtp({ email, token, type:"email" })
+  activate Auth
   Auth --> Form : ok -> emailVerified = true
+  deactivate Auth
 end
 note right of Form : submit button stays disabled until emailVerified
 
 == Capture card client-side (PCI scope minimized) ==
-Guest -> Form : fill guest + billing details, card (Stripe CardElement)
-Form -> Form : guard emailVerified && country selected
-Form -> StripeJS : createPaymentMethod({ type:"card", card })
-note right of StripeJS : raw PAN/CVV never reach our server
-StripeJS --> Form : paymentMethodId (pm_***)
-Form -> Ctrl : POST /api/bookings { CreateBookingInput + paymentMethodId }
+Guest -> Form : fill guest + billing details, card (Stripe CardElement), click Submit
+alt required field left blank (HTML5 "required" validation)
+  Form --> Guest : native browser validation message (field highlighted)
+else all required fields present
+  Form -> Form : guard emailVerified && country selected
+  Form -> StripeJS : createPaymentMethod({ type:"card", card })
+  activate StripeJS
+  note right of StripeJS : raw PAN/CVV never reach our server
+  StripeJS --> Form : paymentMethodId (pm_***)
+  deactivate StripeJS
+  Form -> Ctrl : POST /api/bookings { CreateBookingInput + paymentMethodId }
+  activate Ctrl
 
-== Validate + create booking ==
-Ctrl -> Ctrl : CreateBookingSchema.safeParse() (Zod)
-alt invalid payload
-  Ctrl --> Form : 400 { error, issues }
-else valid
-  Ctrl -> Svc : createBooking(input)
-  Svc -> Pay : confirmCardPayment({ amount, currency, paymentMethodId })
-  Pay -> Stripe : paymentIntents.create({ amount*100, confirm:true,\n  automatic_payment_methods:{ enabled, allow_redirects:"never" }, expand:[latest_charge] })
-  Stripe --> Pay : PaymentIntent(status, latest_charge.card{last4, brand})
-  Pay --> Svc : { status, paymentIntentId, cardLast4, cardBrand, clientSecret }
-  Svc -> Svc : generateBookingReference(); nightsBetween()
+  == Validate + create booking ==
+  Ctrl -> Ctrl : CreateBookingSchema.safeParse() (Zod)
+  alt invalid payload
+    Ctrl --> Form : 400 { error, issues }
+    Form --> Guest : "Could not complete booking."
+  else valid
+    Ctrl -> Svc : createBooking(input)
+    activate Svc
+    Svc -> Pay : confirmCardPayment({ amount, currency, paymentMethodId })
+    activate Pay
+    Pay -> Stripe : paymentIntents.create({ amount*100, confirm:true,\n  automatic_payment_methods:{ enabled, allow_redirects:"never" }, expand:[latest_charge] })
+    activate Stripe
+    Stripe --> Pay : PaymentIntent(status, latest_charge.card{last4, brand})
+    deactivate Stripe
+    Pay --> Svc : { status, paymentIntentId, cardLast4, cardBrand, clientSecret }
+    deactivate Pay
+    Svc -> Svc : generateBookingReference(); nightsBetween()
 
-  alt status == "succeeded"
-    Svc -> DB : INSERT booking(status=confirmed, guest+billing details,\n  stripePaymentIntentId, cardLast4, cardBrand)
-    note right of DB : never persists PAN/CVV/paymentMethodId
-    opt input.userId present (member)
-      Svc -> Points : recordPointsEntry(userId, +pointsForBooking(price), "earn: booking <ref>")
-      Points -> DB : append points_ledger(delta, balanceAfter)
-      note over Svc, Points : wrapped in try/catch — a points failure never fails the booking
+    alt status == "succeeded"
+      Svc -> DB : INSERT booking(status=confirmed, guest+billing details,\n  stripePaymentIntentId, cardLast4, cardBrand)
+      activate DB
+      note right of DB : never persists PAN/CVV/paymentMethodId
+      deactivate DB
+      opt input.userId present (member)
+        Svc -> Points : recordPointsEntry(userId, +pointsForBooking(price), "earn: booking <ref>")
+        activate Points
+        Points -> DB : append points_ledger(delta, balanceAfter)
+        activate DB
+        deactivate DB
+        Points --> Svc : done (or throws, caught below)
+        note over Svc, Points : awaited inside try/catch: a points failure\nnever fails the booking (caught, not rethrown)
+        deactivate Points
+      end
+      Svc --> Ctrl : { reference, status: confirmed, cardLast4 }
+      Ctrl --> Form : 201 { reference, status }
+      Form --> Guest : navigate /book/confirmation/:reference
+    else payment not succeeded
+      Svc -> DB : INSERT booking(status=failed, stripePaymentIntentId)
+      activate DB
+      deactivate DB
+      Svc --> Ctrl : { reference, status: failed }
+      deactivate Svc
+      Ctrl --> Form : 402 { error, reference }
+      deactivate Ctrl
+      Form --> Guest : "Payment failed. Please try another card."
+      deactivate Form
     end
-    Svc --> Ctrl : { reference, status: confirmed, cardLast4 }
-    Ctrl --> Form : 201 { reference, status }
-    Form --> Guest : navigate /book/confirmation/:reference
-  else payment not succeeded
-    Svc -> DB : INSERT booking(status=failed, stripePaymentIntentId)
-    Svc --> Ctrl : { reference, status: failed }
-    Ctrl --> Form : 402 { error, reference }
-    Form --> Guest : "Payment failed. Please try another card."
   end
+  note right of Form : an uncaught server error (e.g. an unhandled DB failure,\nsee Exception Flow gap noted separately) would also land here,\nsince it isn't 201 or 402 either
 end
 @enduml

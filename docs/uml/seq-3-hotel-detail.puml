@@ -1,51 +1,133 @@
 @startuml seq-3-hotel-detail
-' UC3: View hotel & room details — fresh rate re-fetch ("most accurate rates across views").
-title UC3 — Hotel Detail & Fresh Room Rates
+' UC3: View hotel & room details, fresh rate re-fetch ("most accurate rates across views").
+' Secondary actors per PM1 UC-03: Ascenda Hotel API, Maps Service.
+title UC3: Hotel Detail & Fresh Room Rates
 autonumber
 
 actor Guest
 participant "HotelDetailPage\n<<server component>>" as Page
+participant "HotelDetail\n<<async server component>>" as HD
 participant "RoomsProvider\n<<client, context>>" as RP
 participant "useHotelRooms\n<<hook>>" as Hook
-participant "HotelGallery / RoomList\n<<client>>" as RL
+participant "HotelGallery\n<<client>>" as Gallery
+participant "HotelMap\n<<client>>" as HMap
+actor "Maps Service\n(Google Maps / OpenStreetMap)" as MapsSvc
+participant "RoomList\n<<client>>" as RoomList
 participant "PricesController\n/api/hotels/:id/prices" as Ctrl
 participant "AscendaClient" as Client
+actor "Ascenda Hotel API\n(hotelapi.loyalty.dev)" as Ascenda
 participant "AscendaMappers" as Map
-participant "Ascenda mock API" as Ascenda
 
 == Static hotel info (cached) ==
 Guest -> Page : GET /hotels/:id?<query>
-Page -> Client : ascendaGet(/api/hotels/:id) [revalidate 24h]
+activate Page
+Page -> HD : render <HotelDetail id query />  (inside <Suspense>)
+activate HD
+HD -> Client : ascendaGet(/api/hotels/:id) [revalidate 24h]
+activate Client
 Client -> Ascenda : GET /api/hotels/:id
+activate Ascenda
 Ascenda --> Client : raw hotel JSON
-Client --> Page : raw
-Page -> Map : mapHotel(raw)
-Map --> Page : Hotel
-Page -> Map : hotelImageUrls(hotel)
-Map --> Page : string[]  (prefix{i}suffix)
-note over Page : HotelAbout parses the blurb (parseDescription);\nHotelMap geocodes by hotel name, not lat/lng
-Page --> Guest : render name/address/amenities/photos/map
-Page --> RP : <RoomsProvider hotelId query> wrapping gallery + rooms
+deactivate Ascenda
+Client --> HD : raw
+deactivate Client
+HD -> Map : mapHotel(raw)
+activate Map
+Map --> HD : Hotel
+deactivate Map
+HD -> Map : hotelImageUrls(hotel)
+activate Map
+Map --> HD : string[]  (prefix{i}suffix)
+deactivate Map
+note over HD : HotelAbout parses the blurb (parseDescription)
+HD -> RP : mount <RoomsProvider hotelId query>\n  wrapping header/gallery/about/amenities/map/<RoomList>
+activate RP
+RP -> Hook : useHotelRooms(hotelId, query)
+activate Hook
+Hook --> RP : { rooms: [], loading: true, confirmedAt: null }  (initial state, before first poll)
+RP --> HD : mounted
+HD --> Page : rendered hotel detail content
+deactivate HD
+Page --> Guest : render name/address/amenities  (header + About + amenities sections)
+deactivate Page
+
+RP -> Gallery : mount <HotelGallery images alt />  (inside RoomsProvider's children)
+activate Gallery
+Gallery --> Guest : render hero collage (hotel photos only so far)
+
+RP -> HMap : mount <HotelMap lat lng name address />  (inside RoomsProvider's children)
+activate HMap
+alt NEXT_PUBLIC_GOOGLE_MAPS_API_KEY set
+  HMap -> MapsSvc : embed by place (Google Places lookup on name + address)
+  activate MapsSvc
+else no API key (dev fallback)
+  HMap -> MapsSvc : embed by bbox (OpenStreetMap, raw lat/lng)
+end
+MapsSvc --> HMap : rendered map iframe
+deactivate MapsSvc
+HMap --> Guest : render "Where you'll be" map
+deactivate HMap
+
+RP -> RoomList : mount <RoomList hotelId query />  (inside RoomsProvider's children)
+deactivate RP
+activate RoomList
+RoomList --> Guest : render initial room section (loading)
 
 == Poll fresh room rates once, shared via context (never reuse list prices) ==
-RP -> Hook : useHotelRooms(hotelId, query)
 loop until completed OR polls >= MAX_POLLS (26)
   Hook -> Ctrl : GET /api/hotels/:id/prices?<identical query>
+  activate Ctrl
   Ctrl -> Ctrl : SearchParamsSchema.safeParse() (Zod)
-  Ctrl -> Client : buildHotelPricesUrl(id, +stub params)
-  Client -> Ascenda : GET /api/hotels/:id/price (no-store)
-  Ascenda --> Client : raw room JSON (warming up; may be empty)
-  Client --> Ctrl : raw
-  Ctrl -> Map : mapRooms(raw)
-  Map --> Ctrl : Room[]
-  Ctrl --> Hook : { completed, rooms[] }
-  opt not completed
-    Hook -> Hook : setTimeout(poll, polls < FAST_POLLS(8) ? 600ms : 2000ms)
+  alt invalid params or missing id
+    Ctrl --> Hook : 400 { error: "invalid params" }
+  else valid
+    Ctrl -> Client : buildHotelPricesUrl(id, +stub params)
+    activate Client
+    Client -> Ascenda : GET /api/hotels/:id/price (no-store)
+    activate Ascenda
+    Ascenda --> Client : raw room JSON (warming up; may be empty)
+    deactivate Ascenda
+    Client --> Ctrl : raw
+    deactivate Client
+    Ctrl -> Map : mapRooms(raw)
+    activate Map
+    Map --> Ctrl : Room[]
+    deactivate Map
+    Ctrl --> Hook : 200 { completed, rooms[] }
+  end
+  deactivate Ctrl
+  note right of Hook : useHotelRooms has no res.ok check (unlike useHotelPrices):\nthe 400 body above still gets parsed as JSON like any other\nresponse; with no .rooms/.completed it's indistinguishable\nfrom "still warming up", so it just polls again
+  alt fetch(...) or res.json() throws (network error, bad body)
+    Hook -> Hook : catch -> setLoading(false)  (no error field; silent stop)
+    break
+      note right of Hook : no retry scheduled here either, silent stop,\nsame pattern as useHotelPrices but with no distinct error state\nfor the UI to show
+    end
+  else parsed ok
+    opt rooms.length > 0
+      Hook -> Hook : setRooms(rooms)
+      Hook -> Gallery : context { rooms }
+      Gallery --> Guest : refresh hero collage (room photos folded in so far)
+      Hook -> RoomList : context { rooms, loading: true, confirmedAt: null }
+      RoomList --> Guest : refresh room cards (rate not yet confirmed)
+    end
+    opt not completed
+      Hook -> Hook : setTimeout(poll, polls < FAST_POLLS(8) ? 600ms : 2000ms)
+    end
   end
 end
-Hook -> RL : context { rooms, loading, confirmedAt = now.toLocaleTimeString() }
-note right of RL : gallery falls back to room photos when the hotel\nimage CDN 403s; de-dupes across both sources
-RL --> Guest : room cards + "Rate confirmed at HH:MM" badge
-Guest -> RL : click "Select room"
-RL --> Guest : navigate /book?hotel_id&room_key&room_type&price&<query>  (UC4)
+Hook -> Hook : setRooms(rooms ?? []); setConfirmedAt(now); setLoading(false)
+Hook -> Gallery : context { rooms }
+note right of Gallery : folds room photos into the gallery, de-duped\n(hotel images first); falls back to them when the\nhotel's own image CDN 403s
+Gallery --> Guest : refresh hero collage (room photos folded in)
+deactivate Gallery
+Hook -> RoomList : context { rooms, loading: false, confirmedAt = now.toLocaleTimeString() }
+deactivate Hook
+alt rooms.length > 0
+  RoomList --> Guest : room cards + "Rate confirmed at HH:MM" badge
+  Guest -> RoomList : click "Select room"
+  RoomList --> Guest : navigate /book?hotel_id&room_key&room_type&price&<query>  (UC4)
+else rooms.length == 0
+  RoomList --> Guest : "No rooms available for these dates."\n(plain text only, no return-to-search link/button)
+end
+deactivate RoomList
 @enduml

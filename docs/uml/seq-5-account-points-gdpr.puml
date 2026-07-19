@@ -1,6 +1,6 @@
 @startuml seq-5-account-points-gdpr
-' UC5: Manage account — view points history and delete personal data (GDPR).
-title UC5 — Account: Points History & GDPR Deletion
+' UC5: Manage account, view points history and delete personal data (GDPR).
+title UC5: Account, Points History & GDPR Deletion
 autonumber
 
 actor Member
@@ -11,50 +11,114 @@ participant "AccountController\n/api/account" as Ctrl
 participant "AuthSession\n(Supabase)" as Auth
 participant "PointsService" as Points
 participant "GdprService" as Gdpr
-database "Postgres\n(Drizzle, RLS)" as DB
+database "Postgres\n(Drizzle)" as DB
 
 == View points balance, history & bookings ==
-Member -> Page : open /account  (client page fires both fetches in parallel)
-Page -> Ctrl : GET /api/account/points
-Ctrl -> Auth : getCurrentUserId(serverSupabase)
-Auth --> Ctrl : userId
-alt not authenticated
-  Ctrl --> Page : 401 Unauthorized (Page shows "sign in" state)
-else authenticated
-  Ctrl -> Points : getBalance(userId) + getHistory(userId)  (Promise.all)
-  Points -> DB : SELECT delta / SELECT * ORDER BY created_at DESC (RLS-scoped)
-  DB --> Points : deltas / PointsLedgerEntry[]
-  Points -> Points : deriveBalance(entries)
-  Points --> Ctrl : { balance, history }
-  Ctrl --> Page : { balance, history }
-  Page -> Chart : toChartSeries(history)
-  Chart --> Member : Recharts balance-over-time
-
-  Page -> Ctrl : GET /api/account/bookings
+Member -> Page : open /account
+activate Page
+par points + history (independent fetch, own auth check)
+  Page -> Ctrl : GET /api/account/points
+  activate Ctrl
   Ctrl -> Auth : getCurrentUserId(serverSupabase)
-  Ctrl -> DB : SELECT own bookings WHERE user_id ORDER BY created_at DESC
-  DB --> Ctrl : rows
-  note right of Ctrl : maps to summary rows — card masked to last4/brand,\nbilling address omitted from the list view
-  Ctrl --> Page : { bookings }
+  activate Auth
+  Auth --> Ctrl : userId
+  deactivate Auth
+  alt not authenticated
+    Ctrl --> Page : 401 Unauthorized
+  else authenticated
+    Ctrl -> Points : getBalance(userId) + getHistory(userId)  (Promise.all, 2 separate queries)
+    activate Points
+    note right of DB : RLS policies exist on these tables (select-only for bookings/points_ledger)\nbut DATABASE_URL connects as the "postgres" superuser (BYPASSRLS by default):\nthe real access control here is this query's own WHERE user_id filter, not RLS
+    Points -> DB : SELECT delta WHERE user_id = ?  (for getBalance)
+    activate DB
+    DB --> Points : deltas
+    deactivate DB
+    Points -> Points : deriveBalance(entries)
+    Points -> DB : SELECT * WHERE user_id = ? ORDER BY created_at DESC  (for getHistory)
+    activate DB
+    DB --> Points : PointsLedgerEntry[]
+    deactivate DB
+    Points --> Ctrl : { balance, history }
+    deactivate Points
+    Ctrl --> Page : { balance, history }
+  end
+  deactivate Ctrl
+else bookings (independent fetch, own auth check)
+  Page -> Ctrl : GET /api/account/bookings
+  activate Ctrl
+  Ctrl -> Auth : getCurrentUserId(serverSupabase)
+  activate Auth
+  Auth --> Ctrl : userId
+  deactivate Auth
+  alt not authenticated
+    Ctrl --> Page : 401 Unauthorized
+  else authenticated
+    Ctrl -> DB : SELECT own bookings WHERE user_id ORDER BY created_at DESC
+    activate DB
+    DB --> Ctrl : rows
+    deactivate DB
+    note right of Ctrl : maps to summary rows, card masked to last4/brand,\nbilling address omitted from the list view
+    Ctrl --> Page : { bookings }
+  end
+  deactivate Ctrl
+end
+note over Page : only the points branch's 401 actually changes what renders\n(sets a page-level "please sign in" state); the bookings branch\nsilently no-ops on any non-OK status, leaving that section loading forever
+alt points fetch was unauthenticated
+  Page --> Member : "Please sign in to view your account."
+else authenticated
+  Page -> Chart : toChartSeries(history)
+  activate Chart
+  Chart --> Member : Recharts balance-over-time
+  deactivate Chart
   Page --> Member : render booking list
 end
+deactivate Page
 
 == Delete account (GDPR) ==
-Member -> DelBtn : click "Delete Account" + confirm
-DelBtn -> Ctrl : DELETE /api/account
-Ctrl -> Auth : getCurrentUserId(serverSupabase)
-Auth --> Ctrl : userId
-Ctrl -> Gdpr : deleteUserData(userId)
-group transaction
-  Gdpr -> DB : UPDATE bookings SET user_id = NULL WHERE user_id = userId
-  note right of DB : bookings retained for audit\nbut carry no PII link
-  Gdpr -> DB : DELETE FROM points_ledger WHERE user_id = userId
-  Gdpr -> DB : DELETE FROM users WHERE id = userId
+Member -> DelBtn : click "Delete account"
+activate DelBtn
+DelBtn -> Member : window.confirm("Permanently delete...? This cannot be undone.")
+alt Member cancels
+  DelBtn --> Member : (returns early, no request sent, nothing changes)
+else Member confirms
+  DelBtn -> Ctrl : DELETE /api/account
+  activate Ctrl
+  Ctrl -> Auth : getCurrentUserId(serverSupabase)
+  activate Auth
+  Auth --> Ctrl : userId
+  deactivate Auth
+  alt not authenticated
+    Ctrl --> DelBtn : 401 Unauthorized
+  else authenticated
+    Ctrl -> Gdpr : deleteUserData(userId)
+    activate Gdpr
+    note right of Gdpr : sequential awaits, NOT wrapped in a real DB transaction;\nif a later step throws, earlier steps are NOT rolled back\n(order is chosen deliberately: de-identify first, delete last)
+    Gdpr -> DB : UPDATE bookings SET user_id = NULL WHERE user_id = userId
+    activate DB
+    note right of DB : only the user_id FK is cleared, guestFirstName/LastName,\nguestEmail, guestPhone, and billing address fields are\nNOT scrubbed and remain fully readable in the row
+    deactivate DB
+    Gdpr -> DB : DELETE FROM points_ledger WHERE user_id = userId
+    activate DB
+    deactivate DB
+    Gdpr -> DB : DELETE FROM users WHERE id = userId
+    activate DB
+    deactivate DB
+    Gdpr -> Auth : adminClient().auth.admin.deleteUser(userId)
+    activate Auth
+    note right of Auth : uses a separate service-role admin client,\ndifferent credentials than the per-request getCurrentUserId() check
+    Auth --> Gdpr : ok
+    deactivate Auth
+    Gdpr --> Ctrl : { deletedUser: true }
+    deactivate Gdpr
+    Ctrl --> DelBtn : 200 { deleted: true }
+  end
+  deactivate Ctrl
+  alt res.ok
+    DelBtn -> DelBtn : router.push("/")  (no explicit sign-out call,\nrelies on the now-deleted auth user invalidating the session)
+    DelBtn --> Member : redirect to "/" (account erased)
+  else not ok (401 above, or an uncaught exception in deleteUserData)
+    DelBtn --> Member : "Could not delete account. Please try again."  (window.alert)
+  end
+  deactivate DelBtn
 end
-Gdpr -> Auth : auth.admin.deleteUser(userId)
-Auth --> Gdpr : ok
-Gdpr --> Ctrl : { deletedUser: true }
-Ctrl --> DelBtn : 200 OK
-DelBtn -> Auth : sign out
-DelBtn --> Member : redirect to "/" (account erased)
 @enduml
