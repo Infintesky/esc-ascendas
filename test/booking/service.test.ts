@@ -1,6 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { createBooking } from "@/lib/booking/service";
 
+vi.mock("@/lib/email/reconciliation", () => ({
+  sendReconciliationEmail: vi.fn().mockResolvedValue(undefined),
+}));
+
 const input = {
   destinationId: "RsBU", hotelId: "QDaO", roomKey: "k1", roomType: "Deluxe",
   checkin: "2026-10-01", checkout: "2026-10-07", adults: 2, children: 0,
@@ -39,5 +43,48 @@ describe("createBooking", () => {
     }));
     const out = await createBooking(input, { insert, confirm });
     expect(out.status).toBe("failed");
+  });
+
+  it("sends a reconciliation email and rethrows when DB insert fails after payment succeeds", async () => {
+    const { sendReconciliationEmail } = await import("@/lib/email/reconciliation");
+
+    const confirm = vi.fn(async () => ({
+      status: "succeeded", paymentIntentId: "pi_3", cardLast4: "4242", cardBrand: "visa", clientSecret: "cs",
+    }));
+    const insert = vi.fn(async () => {
+      throw new Error("DB connection lost");
+    });
+
+    await expect(
+      createBooking(input, { insert, confirm }),
+    ).rejects.toThrow("DB connection lost");
+
+    expect(sendReconciliationEmail).toHaveBeenCalledTimes(1);
+    expect(sendReconciliationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "ada@example.com",
+        paymentIntentId: "pi_3",
+        amount: 1200,
+        currency: "SGD",
+      }),
+    );
+  });
+
+  it("does NOT send a reconciliation email when payment itself fails (nothing to reconcile)", async () => {
+    const { sendReconciliationEmail } = await import("@/lib/email/reconciliation");
+    vi.mocked(sendReconciliationEmail).mockClear();
+
+    const confirm = vi.fn(async () => ({
+      status: "requires_payment_method", paymentIntentId: "pi_4", cardLast4: null, cardBrand: null, clientSecret: null,
+    }));
+    const insert = vi.fn(async () => {
+      throw new Error("DB connection lost");
+    });
+
+    await expect(
+      createBooking(input, { insert, confirm }),
+    ).rejects.toThrow("DB connection lost");
+
+    expect(sendReconciliationEmail).not.toHaveBeenCalled();
   });
 });

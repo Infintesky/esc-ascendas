@@ -5,6 +5,7 @@ import { nightsBetween } from "./nights";
 import { confirmCardPayment } from "@/lib/stripe/payment";
 import { recordPointsEntry } from "@/lib/points/service";
 import { pointsForBooking } from "@/lib/points/rules";
+import { sendReconciliationEmail } from "@/lib/email/reconciliation";
 import type { CreateBookingInput } from "./schema";
 
 type BookingRow = typeof bookings.$inferInsert;
@@ -68,7 +69,29 @@ export async function createBooking(
     cardBrand: payment.cardBrand,
   };
 
-  await insert(row);
+  try {
+    await insert(row);
+  } catch (err) {
+    // Payment already succeeded but we failed to persist the booking.
+    // Do NOT throw silently — the customer has been charged with no record.
+    if (status === "confirmed") {
+      await sendReconciliationEmail({
+        to: input.email,
+        reference,
+        paymentIntentId: payment.paymentIntentId,
+        amount: input.price,
+        currency: input.currency,
+        error: err instanceof Error ? err.message : String(err),
+      }).catch(() => {
+        // Reconciliation email itself failed — this must not be silent.
+        // At minimum, surface it loudly (logging/alerting service).
+        console.error("CRITICAL: booking insert failed AND reconciliation email failed", {
+          reference, paymentIntentId: payment.paymentIntentId, err,
+        });
+      });
+    }
+    throw err; // still fail the request — caller/API route should return a 500
+  }
 
   if (status === "confirmed" && input.userId) {
     try {
