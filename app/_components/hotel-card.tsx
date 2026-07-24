@@ -67,7 +67,7 @@ export function HotelCard({
               </span>
             )}
           </div>
-          <Button size="lg" render={<Link href={`/hotels/${listing.id}?${qs}`} />}>
+          <Button size="lg" nativeButton={false} render={<Link href={`/hotels/${listing.id}?${qs}`} />}>
             Select
           </Button>
         </div>

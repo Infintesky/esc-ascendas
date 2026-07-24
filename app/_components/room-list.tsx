@@ -77,6 +77,7 @@ export function RoomList({
                       </div>
                       <Button
                         size="lg"
+                        nativeButton={false}
                         render={
                           <Link
                             href={`/book?hotel_id=${hotelId}&room_key=${encodeURIComponent(room.key)}&room_type=${encodeURIComponent(room.roomType)}&price=${room.price}&${qs}`}
