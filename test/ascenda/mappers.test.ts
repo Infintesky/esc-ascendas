@@ -19,6 +19,23 @@ describe("mapHotel", () => {
     expect(hotel.imageCount).toBe(3);
   });
 
+  it("prefers TrustYou kaligo_overall as the decimal rating", () => {
+    const hotel = mapHotel({
+      id: "a", name: "A", latitude: 0, longitude: 0, address: "z", rating: 4,
+      trustyou: { score: { overall: 85, kaligo_overall: 4.3 } },
+    });
+    expect(hotel.rating).toBe(4.3);
+    expect(hotel.guestRating).toBe(85);
+  });
+
+  it("falls back to the star rating when there are no reviews", () => {
+    const hotel = mapHotel({
+      id: "a", name: "A", latitude: 0, longitude: 0, address: "z", rating: 5,
+      trustyou: { score: { overall: null, kaligo_overall: 0 } },
+    });
+    expect(hotel.rating).toBe(5);
+  });
+
   it("tolerates missing optional fields", () => {
     const hotel = mapHotel({
       id: "x",

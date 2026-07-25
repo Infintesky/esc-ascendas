@@ -24,13 +24,17 @@ export function mapHotel(raw: unknown): Hotel {
   // TrustYou guest score (0–100); separate from the supplier star `rating`.
   const trustyou = (r.trustyou ?? {}) as Record<string, unknown>;
   const tyScore = (trustyou.score ?? {}) as Record<string, unknown>;
+  // The supplier's `rating` is the official star class and is always a whole
+  // number (e.g. 4.0). TrustYou's `kaligo_overall` is the decimal 0–5 rating, so
+  // prefer it and fall back to the star class when a hotel has no reviews (0).
+  const decimalRating = num(tyScore.kaligo_overall) || num(r.rating);
   return HotelSchema.parse({
     id: String(r.id ?? ""),
     name: String(r.name ?? ""),
     latitude: num(r.latitude),
     longitude: num(r.longitude),
     address: String(r.address ?? ""),
-    rating: num(r.rating),
+    rating: decimalRating,
     guestRating: num(tyScore.overall),
     description: r.description ? String(r.description) : "",
     amenities: toStringArray(r.amenities),

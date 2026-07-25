@@ -78,7 +78,9 @@ export function ResultsView({
       minPrice: filters.minPrice != null ? filters.minPrice * nights : undefined,
       maxPrice: filters.maxPrice != null ? filters.maxPrice * nights : undefined,
     };
-    return sortListings(applyFilters(available, stayFilters), sortBy, "asc");
+    // Cheapest first for price; highest-rated first for rating.
+    const dir = sortBy === "rating" ? "desc" : "asc";
+    return sortListings(applyFilters(available, stayFilters), sortBy, dir);
   }, [hotels, prices, filters, sortBy, nights]);
 
   // Heading count: how many hotels have availability for these dates so far —

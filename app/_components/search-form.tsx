@@ -26,7 +26,10 @@ export function SearchForm() {
   const [destination, setDestination] = useState<DestinationEntry | null>(null);
   const [checkin, setCheckin] = useState("");
   const [checkout, setCheckout] = useState("");
-  const [rooms, setRooms] = useState(1);
+  // Kept as a raw string so the field can be cleared and edited freely; clamped
+  // to [1, MAX_ROOMS] on blur and at submit. Clamping on every keystroke made
+  // typing a digit onto the existing value snap straight to MAX_ROOMS.
+  const [rooms, setRooms] = useState("1");
   const [adults, setAdults] = useState(2);
   const [children, setChildren] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +52,7 @@ export function SearchForm() {
       destination_id: destination.uid,
       checkin,
       checkout,
-      rooms: String(rooms),
+      rooms: String(clampInt(Number(rooms), 1, MAX_ROOMS)),
       // Upstream takes a single occupancy count per room; adults + children.
       guests: String(adults + children),
       currency: "SGD",
@@ -91,7 +94,8 @@ export function SearchForm() {
             min={1}
             max={MAX_ROOMS}
             value={rooms}
-            onChange={(e) => setRooms(clampInt(Number(e.target.value), 1, MAX_ROOMS))}
+            onChange={(e) => setRooms(e.target.value)}
+            onBlur={() => setRooms(String(clampInt(Number(rooms), 1, MAX_ROOMS)))}
             className="h-11"
           />
         </div>
