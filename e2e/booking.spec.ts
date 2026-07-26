@@ -25,10 +25,10 @@ test.describe("Booking + payment", () => {
     await pickStayDates(page, stay);
     await page.getByRole("button", { name: "Search" }).click();
 
-    await page.getByRole("link", { name: "Select" }).first().click({ timeout: 45_000 });
+    await page.getByRole("button", { name: "Select" }).first().click({ timeout: 45_000 });
     await expect(page).toHaveURL(/\/hotels\//);
 
-    await page.getByRole("link", { name: "Select room" }).first().click({ timeout: 45_000 });
+    await page.getByRole("button", { name: "Select room" }).first().click({ timeout: 45_000 });
     await expect(page).toHaveURL(/\/book\?/);
 
     // --- Guest details (reserved email skips OTP) ---

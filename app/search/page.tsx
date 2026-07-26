@@ -1,6 +1,5 @@
 import { Suspense } from "react";
-import { ASCENDA_BASE_URL, ascendaGet } from "@/lib/ascenda/client";
-import { mapHotel } from "@/lib/ascenda/mappers";
+import { getHotelsForDestination } from "@/lib/ascenda/hotels";
 import { ResultsView } from "@/app/_components/results-view";
 import { ResultsSkeleton } from "@/app/_components/skeletons";
 import { SiteShell } from "@/app/_components/site-shell";
@@ -16,11 +15,7 @@ async function SearchResults({
   destinationId: string;
   query: Record<string, string>;
 }) {
-  const raw = await ascendaGet<unknown[]>(
-    `${ASCENDA_BASE_URL}/api/hotels?destination_id=${encodeURIComponent(destinationId)}`,
-    { next: { revalidate: 86_400 } },
-  );
-  const hotels = (Array.isArray(raw) ? raw : []).map(mapHotel);
+  const hotels = await getHotelsForDestination(destinationId);
 
   return <ResultsView hotels={hotels} query={query} />;
 }

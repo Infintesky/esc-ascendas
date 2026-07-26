@@ -18,7 +18,7 @@ test("search a destination and open a hotel", async ({ page }) => {
   await expect(page).toHaveURL(/\/search\?.*destination_id=/);
 
   // Prices stream in progressively; the first "Select" appears once a hotel is ready.
-  const firstSelect = page.getByRole("link", { name: "Select" }).first();
+  const firstSelect = page.getByRole("button", { name: "Select" }).first();
   await expect(firstSelect).toBeVisible({ timeout: 45_000 });
 
   await firstSelect.click();

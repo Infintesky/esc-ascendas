@@ -7,6 +7,9 @@ import { type Page, expect } from "@playwright/test";
 export function futureStay(daysAhead = 35, nights = 3) {
   const checkin = new Date();
   checkin.setDate(checkin.getDate() + daysAhead);
+  // Anchor check-in early in its month so the whole stay stays within one
+  // calendar-month grid, and away from the disabled first-of-month edge.
+  checkin.setDate(10);
   const checkout = new Date(checkin);
   checkout.setDate(checkout.getDate() + nights);
   const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -44,8 +47,10 @@ export async function pickStayDates(page: Page, stay: ReturnType<typeof futureSt
   }
   await expect(grid).toBeVisible();
 
-  // Day buttons carry a full-date aria-label (react-day-picker), so match the
-  // visible number instead. Mid-month days avoid adjacent-month duplicates.
-  await grid.getByText(String(stay.checkin.getDate()), { exact: true }).click();
-  await grid.getByText(String(stay.checkout.getDate()), { exact: true }).click();
+  // Day buttons carry a `data-day="M/D/YYYY"` attribute (react-day-picker), which
+  // uniquely identifies a date even when adjacent-month cells repeat the same
+  // number (e.g. both Jul 30 and Aug 30 render "30" in the August grid).
+  const dataDay = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+  await grid.locator(`[data-day="${dataDay(stay.checkin)}"]`).click();
+  await grid.locator(`[data-day="${dataDay(stay.checkout)}"]`).click();
 }
