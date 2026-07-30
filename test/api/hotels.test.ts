@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+// `getHotelsForDestination` is wrapped in Next's `unstable_cache`, which requires
+// the incremental-cache context that only exists inside a real Next request.
+// Outside it (plain Vitest), the wrapper throws "incrementalCache missing", so
+// make it a pass-through to exercise the route's mapping logic directly.
+vi.mock("next/cache", () => ({
+  unstable_cache: (fn: (...args: unknown[]) => unknown) => fn,
+}));
+
 describe("GET /api/hotels", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn(async () =>

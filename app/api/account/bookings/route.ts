@@ -2,15 +2,11 @@ import { NextResponse } from "next/server";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { bookings } from "@/lib/db/schema";
-import { createServerSupabase } from "@/lib/auth/supabase-server";
-import { getCurrentUserId } from "@/lib/auth/session";
+import { requireUserId } from "@/lib/auth/require-user";
 
 export async function GET() {
-  const supabase = await createServerSupabase();
-  const userId = await getCurrentUserId(supabase);
-  if (!userId) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  }
+  const { userId, response } = await requireUserId();
+  if (response) return response;
 
   const rows = await db
     .select()

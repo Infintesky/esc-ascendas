@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
-import { createServerSupabase } from "@/lib/auth/supabase-server";
-import { getCurrentUserId } from "@/lib/auth/session";
+import { requireUserId } from "@/lib/auth/require-user";
 import { deleteUserData } from "@/lib/account/gdpr";
 
 export async function DELETE(_request: Request) {
-  const supabase = await createServerSupabase();
-  const userId = await getCurrentUserId(supabase);
-  if (!userId) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  }
+  const { userId, response } = await requireUserId();
+  if (response) return response;
   await deleteUserData(userId);
   return NextResponse.json({ deleted: true });
 }

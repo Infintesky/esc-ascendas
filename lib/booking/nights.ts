@@ -1,4 +1,4 @@
-const MS_PER_DAY = 86_400_000;
+import { MS_PER_DAY } from "@/lib/date";
 
 export function nightsBetween(checkin: string, checkout: string): number {
   const ci = new Date(checkin + "T00:00:00Z").getTime();

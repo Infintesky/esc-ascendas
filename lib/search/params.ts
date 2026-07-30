@@ -1,10 +1,10 @@
 import { z } from "zod";
+import type { PriceQuery } from "@/lib/ascenda/client";
+import { MS_PER_DAY } from "@/lib/date";
 
 export function serializeGuests(rooms: number, guestsPerRoom: number): string {
   return Array.from({ length: rooms }, () => String(guestsPerRoom)).join("|");
 }
-
-const MS_PER_DAY = 86_400_000;
 
 // Booking constraints.
 export const MIN_CHECKIN_DAYS_AHEAD = 3; // Ascenda: check-in ≥ 3 days out
@@ -73,3 +73,30 @@ export const SearchParamsSchema = z.object({
   guests: z.coerce.number().int().min(1).default(1),
 });
 export type SearchParams = z.infer<typeof SearchParamsSchema>;
+
+/** Parse the shared hotel-price query string against `SearchParamsSchema`. */
+export function parsePriceSearchParams(sp: URLSearchParams) {
+  return SearchParamsSchema.safeParse({
+    destinationId: sp.get("destination_id"),
+    checkin: sp.get("checkin"),
+    checkout: sp.get("checkout"),
+    currency: sp.get("currency") ?? undefined,
+    countryCode: sp.get("country_code") ?? undefined,
+    lang: sp.get("lang") ?? undefined,
+    rooms: sp.get("rooms") ?? undefined,
+    guests: sp.get("guests") ?? undefined,
+  });
+}
+
+/** Map validated search params to the upstream Ascenda `PriceQuery` shape. */
+export function toPriceQuery(p: SearchParams): PriceQuery {
+  return {
+    destinationId: p.destinationId,
+    checkin: p.checkin,
+    checkout: p.checkout,
+    lang: p.lang,
+    currency: p.currency,
+    countryCode: p.countryCode,
+    guests: serializeGuests(p.rooms, p.guests),
+  };
+}

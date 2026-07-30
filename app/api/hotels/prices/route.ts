@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { buildPricesUrl, ascendaGet } from "@/lib/ascenda/client";
 import { mapPricesResponse } from "@/lib/ascenda/mappers";
 import type { PricesResponse } from "@/lib/ascenda/types";
-import { SearchParamsSchema, serializeGuests } from "@/lib/search/params";
+import { parsePriceSearchParams, toPriceQuery } from "@/lib/search/params";
 
 // Once Ascenda reports `completed: true`, the priced result is stable for the
 // search window, so we cache it keyed by the upstream URL. Subsequent polls and
@@ -24,29 +24,11 @@ function getCached(key: string): PricesResponse | null {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const parsed = SearchParamsSchema.safeParse({
-    destinationId: searchParams.get("destination_id"),
-    checkin: searchParams.get("checkin"),
-    checkout: searchParams.get("checkout"),
-    currency: searchParams.get("currency") ?? undefined,
-    countryCode: searchParams.get("country_code") ?? undefined,
-    lang: searchParams.get("lang") ?? undefined,
-    rooms: searchParams.get("rooms") ?? undefined,
-    guests: searchParams.get("guests") ?? undefined,
-  });
+  const parsed = parsePriceSearchParams(searchParams);
   if (!parsed.success) {
     return NextResponse.json({ error: "invalid search params" }, { status: 400 });
   }
-  const p = parsed.data;
-  const url = buildPricesUrl({
-    destinationId: p.destinationId,
-    checkin: p.checkin,
-    checkout: p.checkout,
-    lang: p.lang,
-    currency: p.currency,
-    countryCode: p.countryCode,
-    guests: serializeGuests(p.rooms, p.guests),
-  });
+  const url = buildPricesUrl(toPriceQuery(parsed.data));
   const cached = getCached(url);
   if (cached) return NextResponse.json(cached);
 

@@ -20,8 +20,7 @@ function applyStub(url: URL): void {
   for (const [k, v] of Object.entries(STUB_PARAMS)) url.searchParams.set(k, v);
 }
 
-export function buildPricesUrl(q: PriceQuery): string {
-  const url = new URL(`${ASCENDA_BASE_URL}/api/hotels/prices`);
+function applyPriceParams(url: URL, q: PriceQuery): void {
   url.searchParams.set("destination_id", q.destinationId);
   url.searchParams.set("checkin", q.checkin);
   url.searchParams.set("checkout", q.checkout);
@@ -30,19 +29,17 @@ export function buildPricesUrl(q: PriceQuery): string {
   url.searchParams.set("country_code", q.countryCode);
   url.searchParams.set("guests", q.guests);
   applyStub(url);
+}
+
+export function buildPricesUrl(q: PriceQuery): string {
+  const url = new URL(`${ASCENDA_BASE_URL}/api/hotels/prices`);
+  applyPriceParams(url, q);
   return url.toString();
 }
 
 export function buildHotelPricesUrl(hotelId: string, q: PriceQuery): string {
   const url = new URL(`${ASCENDA_BASE_URL}/api/hotels/${hotelId}/price`);
-  url.searchParams.set("destination_id", q.destinationId);
-  url.searchParams.set("checkin", q.checkin);
-  url.searchParams.set("checkout", q.checkout);
-  url.searchParams.set("lang", q.lang);
-  url.searchParams.set("currency", q.currency);
-  url.searchParams.set("country_code", q.countryCode);
-  url.searchParams.set("guests", q.guests);
-  applyStub(url);
+  applyPriceParams(url, q);
   return url.toString();
 }
 
