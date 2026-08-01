@@ -44,6 +44,7 @@ export function sortListings(
   const sign = dir === "asc" ? 1 : -1;
   return [...listings].sort((a, b) => {
     if (by === "price") {
+      if (a.price == null && b.price == null) return 0;
       if (a.price == null) return 1;
       if (b.price == null) return -1;
       return (a.price - b.price) * sign;

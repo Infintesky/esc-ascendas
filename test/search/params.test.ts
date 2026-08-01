@@ -22,6 +22,11 @@ describe("serializeGuests", () => {
 
 describe("validateDates", () => {
   const now = new Date("2026-06-25T00:00:00Z");
+  it("rejects impossible calendar dates (fuzz, seed 1111526429)", () => {
+    expect(validateDates("2027-02-29", "2027-03-05", now).ok).toBe(false);  // 2027 not a leap year
+    expect(validateDates("2026-00-00", "2026-12-05", now).ok).toBe(false);
+    expect(validateDates("2026-09-31", "2026-10-05", now).ok).toBe(false);  // September 30 days
+  });
   it("rejects check-in less than 3 days out", () => {
     expect(validateDates("2026-06-26", "2026-06-30", now).ok).toBe(false);
   });
@@ -65,5 +70,11 @@ describe("SearchParamsSchema", () => {
     });
     expect(p.rooms).toBe(2);
     expect(p.guests).toBe(2);
+  });
+  it("rejects rooms above MAX_ROOMS (fuzz, seed -1855372981)", () => {
+    const p = { destinationId: "RsBU", checkin: "2026-10-01", checkout: "2026-10-05", guests: "2" };
+    expect(SearchParamsSchema.safeParse({ ...p, rooms: "9" }).success).toBe(false);
+    expect(SearchParamsSchema.safeParse({ ...p, rooms: "100000000" }).success).toBe(false);
+    expect(SearchParamsSchema.safeParse({ ...p, rooms: "8" }).success).toBe(true);
   });
 });

@@ -1,12 +1,13 @@
 import { z } from "zod";
+import { isRealISODate } from "@/lib/search/params";
 
 export const CreateBookingSchema = z.object({
   destinationId: z.string().min(1),
   hotelId: z.string().min(1),
   roomKey: z.string().min(1),
   roomType: z.string().min(1),
-  checkin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  checkout: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  checkin: z.string().refine(isRealISODate, "real calendar date?"),
+  checkout: z.string().refine(isRealISODate, "real calendar date?"),
   adults: z.coerce.number().int().min(1),
   children: z.coerce.number().int().min(0).default(0),
   currency: z.string().min(1),

@@ -13,6 +13,16 @@ export const MAX_GUESTS_PER_ROOM = 4;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+// check date real
+export function isRealISODate(s: string): boolean {
+  if (!ISO_DATE.test(s)) 
+    return false;
+  const d = new Date(s + "T00:00:00Z");
+  if (Number.isNaN(d.getTime())) 
+    return false;
+  return toISODate(d) === s;
+}
+
 function toISODate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -22,7 +32,9 @@ export function addDaysISO(date: string, n: number): string {
   const d = new Date(date + "T00:00:00Z");
   if (Number.isNaN(d.getTime())) return date;
   d.setUTCDate(d.getUTCDate() + n);
-  return toISODate(d);
+  if (Number.isNaN(d.getTime())) return date;
+  const out = toISODate(d);
+  return ISO_DATE.test(out) ? out : date;
 }
 
 /** Earliest selectable check-in date (today + MIN_CHECKIN_DAYS_AHEAD), as YYYY-MM-DD. */
@@ -43,7 +55,7 @@ export function validateDates(
   checkout: string,
   now: Date = new Date(),
 ): { ok: boolean; error?: string } {
-  if (!ISO_DATE.test(checkin) || !ISO_DATE.test(checkout)) {
+  if (!isRealISODate(checkin) || !isRealISODate(checkout)) {
     return { ok: false, error: "Please choose your check-in and check-out dates." };
   }
   const ci = new Date(checkin + "T00:00:00Z");
@@ -64,13 +76,13 @@ export function validateDates(
 
 export const SearchParamsSchema = z.object({
   destinationId: z.string().min(1),
-  checkin: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  checkout: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  checkin: z.string().refine(isRealISODate, "real calendar date?"),
+  checkout: z.string().refine(isRealISODate, "real calendar date?"),
   currency: z.string().default("SGD"),
   countryCode: z.string().default("SG"),
   lang: z.string().default("en_US"),
-  rooms: z.coerce.number().int().min(1).default(1),
-  guests: z.coerce.number().int().min(1).default(1),
+  rooms: z.coerce.number().int().min(1).max(MAX_ROOMS).default(1),
+  guests: z.coerce.number().int().min(1).max(MAX_GUESTS_PER_ROOM).default(1),
 });
 export type SearchParams = z.infer<typeof SearchParamsSchema>;
 
