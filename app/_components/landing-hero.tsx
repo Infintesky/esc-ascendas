@@ -31,8 +31,7 @@ export function LandingHero() {
           animate="show"
           className="whitespace-nowrap text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl"
         >
-          Ascenda Loyalty ·{" "}
-          <span className="text-primary">points-powered travel</span>
+          Ascenda Loyalty
         </motion.h1>
 
         <motion.p
