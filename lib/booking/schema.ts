@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isRealISODate } from "@/lib/search/params";
+import { isRealISODate } from "@/lib/date";
 
 export const CreateBookingSchema = z.object({
   destinationId: z.string().min(1),

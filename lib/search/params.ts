@@ -1,6 +1,9 @@
 import { z } from "zod";
 import type { PriceQuery } from "@/lib/ascenda/client";
-import { MS_PER_DAY } from "@/lib/date";
+import { MS_PER_DAY, ISO_DATE, toISODate, isRealISODate } from "@/lib/date";
+
+// re-export so existing `@/lib/search/params` importers keep working
+export { isRealISODate } from "@/lib/date";
 
 export function serializeGuests(rooms: number, guestsPerRoom: number): string {
   return Array.from({ length: rooms }, () => String(guestsPerRoom)).join("|");
@@ -10,22 +13,6 @@ export function serializeGuests(rooms: number, guestsPerRoom: number): string {
 export const MIN_CHECKIN_DAYS_AHEAD = 3; // Ascenda: check-in ≥ 3 days out
 export const MAX_ROOMS = 8;
 export const MAX_GUESTS_PER_ROOM = 4;
-
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
-// check date real
-export function isRealISODate(s: string): boolean {
-  if (!ISO_DATE.test(s)) 
-    return false;
-  const d = new Date(s + "T00:00:00Z");
-  if (Number.isNaN(d.getTime())) 
-    return false;
-  return toISODate(d) === s;
-}
-
-function toISODate(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
 
 /** Add `n` days to a YYYY-MM-DD string, returning YYYY-MM-DD. */
 export function addDaysISO(date: string, n: number): string {
