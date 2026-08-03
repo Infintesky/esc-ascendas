@@ -19,7 +19,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "build:index": "bun run scripts/build-destination-index.ts",
-    "prebuild": "bun run scripts/build-destination-index.ts"
+    "prebuild": "bun run scripts/build-destination-index.ts",
+    "fuzz": "bun run fuzz/run.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
