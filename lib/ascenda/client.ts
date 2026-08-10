@@ -43,10 +43,34 @@ export function buildHotelPricesUrl(hotelId: string, q: PriceQuery): string {
   return url.toString();
 }
 
+// Upstream throttles bursts (429) and briefly 503s while the price aggregation
+// warms up. Both are transient, so retry a few times with backoff before giving
+// up — honoring a Retry-After header when the server sends one.
+const RETRYABLE_STATUS = new Set([429, 503]);
+const MAX_RETRIES = 3;
+const BASE_BACKOFF_MS = 400;
+
+function parseRetryAfter(value: string | null): number | null {
+  if (!value) return null;
+  const seconds = Number(value);
+  if (Number.isFinite(seconds)) return Math.max(0, seconds * 1000);
+  const date = Date.parse(value);
+  if (Number.isFinite(date)) return Math.max(0, date - Date.now());
+  return null;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export async function ascendaGet<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (!res.ok) {
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(url, init);
+    if (res.ok) return (await res.json()) as T;
+    if (attempt < MAX_RETRIES && RETRYABLE_STATUS.has(res.status)) {
+      const retryAfter = parseRetryAfter(res.headers.get("retry-after"));
+      const backoff = retryAfter ?? BASE_BACKOFF_MS * 2 ** attempt;
+      await sleep(backoff);
+      continue;
+    }
     throw new Error(`Ascenda request failed: ${res.status} ${url}`);
   }
-  return (await res.json()) as T;
 }

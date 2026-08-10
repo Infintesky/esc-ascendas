@@ -35,6 +35,7 @@ export function useHotelPrices(query: Record<string, string>) {
         for (const h of data.hotels) merged.current.set(h.id, h);
         if (!active) return;
         setHotels([...merged.current.values()]);
+        setError(null);
         polls += 1;
         if (data.completed || polls >= MAX_POLLS) {
           setCompleted(true);
@@ -42,7 +43,17 @@ export function useHotelPrices(query: Record<string, string>) {
           setTimeout(poll, polls < FAST_POLLS ? FAST_INTERVAL_MS : SLOW_INTERVAL_MS);
         }
       } catch (e) {
-        if (active) setError((e as Error).message);
+        // A single failed poll (e.g. a transient upstream 429/5xx) shouldn't kill
+        // the whole stream. Keep polling until the ceiling; only surface the error
+        // if we give up without ever having received any prices.
+        if (!active) return;
+        polls += 1;
+        if (polls >= MAX_POLLS) {
+          if (merged.current.size === 0) setError((e as Error).message);
+          setCompleted(true);
+        } else {
+          setTimeout(poll, polls < FAST_POLLS ? FAST_INTERVAL_MS : SLOW_INTERVAL_MS);
+        }
       }
     }
     poll();

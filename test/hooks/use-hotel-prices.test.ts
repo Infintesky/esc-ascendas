@@ -25,4 +25,27 @@ describe("useHotelPrices", () => {
     const ids = result.current.hotels.map((h) => h.id).sort();
     expect(ids).toEqual(["h1", "h2"]);
   });
+
+  it("survives a transient failed poll and keeps streaming", async () => {
+    let call = 0;
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      call += 1;
+      if (call === 1) return new Response("rate limited", { status: 429 });
+      if (call === 2)
+        return new Response(
+          JSON.stringify({ completed: false, hotels: [{ id: "h1", searchRank: 1, price: 100, marketRates: [] }] }),
+          { status: 200 },
+        );
+      return new Response(
+        JSON.stringify({ completed: true, hotels: [{ id: "h2", searchRank: 2, price: 120, marketRates: [] }] }),
+        { status: 200 },
+      );
+    }));
+    const { result } = renderHook(() =>
+      useHotelPrices({ destination_id: "RsBU", checkin: "2026-10-01", checkout: "2026-10-07", rooms: "1", guests: "2" }),
+    );
+    await waitFor(() => expect(result.current.completed).toBe(true), { timeout: 5000 });
+    expect(result.current.error).toBeNull();
+    expect(result.current.hotels.map((h) => h.id).sort()).toEqual(["h1", "h2"]);
+  });
 });
